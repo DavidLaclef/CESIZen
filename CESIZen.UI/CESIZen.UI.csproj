@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\R2.Data\R2.Data.csproj" />
+    <ProjectReference Include="..\CESIZen.Data\CESIZen.Data.csproj" />
   </ItemGroup>
 
 </Project>

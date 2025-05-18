@@ -1,0 +1,30 @@
+﻿@inherits LayoutComponentBase
+
+<div class="page">
+    <!-- Menu latéral (visible uniquement sur desktop) -->
+    <div class="sidebar d-none d-md-block">
+        <NavMenu />
+    </div>
+
+    <main class="main">
+        <!-- Barre supérieure (visible uniquement sur desktop) -->
+        <div class="top-row px-4 d-none d-md-flex">
+            <LoginDisplay />
+        </div>
+        
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+
+    <!-- Menu mobile horizontal en bas (visible uniquement sur mobile) -->
+    <div class="mobile-navbar d-md-none">
+        <NavMenuMobile />
+    </div>
+</div>
+
+<div id="blazor-error-ui">
+    Une erreur non gérée s'est produite.
+    <a href="" class="reload">Recharger</a>
+    <a class="dismiss">🗙</a>
+</div>

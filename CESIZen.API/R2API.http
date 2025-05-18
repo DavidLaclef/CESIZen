@@ -1,0 +1,6 @@
+@CESIZen.API_HostAddress = http://localhost:5276
+
+GET {{CESIZen.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

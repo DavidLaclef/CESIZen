@@ -1,0 +1,92 @@
+﻿@page "/informationalArticle/create"
+@using Microsoft.EntityFrameworkCore
+@using CESIZen.Data.Entities
+@using CESIZen.Data.Enums
+@inject IDbContextFactory<CESIZen.Data.Context.CESIZenDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Créer une ressource</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h2 class="mb-0">Créer une nouvelle ressource</h2>
+        </div>
+        <div class="card-body">
+            <EditForm method="post" Model="informationalArticle" OnValidSubmit="AddInformationalArticle" FormName="create" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary class="alert alert-danger" role="alert" />
+
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="form-group mb-4">
+                            <label for="name" class="form-label fw-bold">Nom de l'article<span class="text-danger">*</span></label>
+                            <InputText id="name" @bind-Value="informationalArticle.Title" class="form-control form-control-lg" placeholder="Nom de la ressource" />
+                            <ValidationMessage For="() => informationalArticle.Title" class="text-danger" />
+                        </div>
+
+                        <div class="form-group mb-4">
+                            <label for="description" class="form-label fw-bold">Description <span class="text-danger">*</span></label>
+                            <InputTextArea id="description" @bind-Value="informationalArticle.Content" class="form-control" rows="5" placeholder="Description détaillée de la ressource..." />
+                            <ValidationMessage For="() => informationalArticle.Content" class="text-danger" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="form-group mb-3">
+                        <label for="categoryid" class="form-label fw-bold">Catégorie <span class="text-danger">*</span></label>
+                        <InputSelect id="categoryid" @bind-Value="informationalArticle.CategoryId" class="form-select" required>
+                            <option value="">Sélectionner une catégorie</option>
+                            @if (categories != null)
+                            {
+                                @foreach (var category in categories)
+                                {
+                                    <option value="@category.Id">@category.Name</option>
+                                }
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => informationalArticle.CategoryId" class="text-danger" />
+                        <small class="form-text text-muted">Sélection obligatoire pour catégoriser votre ressource.</small>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between border-top pt-4">
+                    <a href="@($"/resources")" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Retour à la liste
+                    </a>
+                    <div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-plus-circle"></i> Créer la ressource
+                        </button>
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private InformationalArticle informationalArticle { get; set; } = new();
+
+    private List<CategoryInformation>? categories { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        categories = await context.CategoriesInformation.ToListAsync();
+    }
+
+    private async Task AddInformationalArticle()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        informationalArticle.CreationDate = DateTime.Now;
+
+        context.InformationalArticles.Add(informationalArticle);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/informationalArticle");
+    }
+}

@@ -1,0 +1,46 @@
+﻿@page "/categoriesInformation/details"
+@using Microsoft.EntityFrameworkCore
+@using CESIZen.Data.Entities
+@inject IDbContextFactory<CESIZen.Data.Context.CESIZenDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Details</PageTitle>
+
+<h1>Details</h1>
+
+<div>
+    <h2>Category</h2>
+    <hr />
+    @if (category is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">Name</dt>
+            <dd class="col-sm-10">@category.Name</dd>
+        </dl>
+        <div>
+            <a href="@($"/categoriesInformation/edit/{category.Id}")">Modifier</a> |
+            <a href="@($"/categoriesInformation")">Retour aux catégories</a>
+        </div>
+    }
+</div>
+
+@code {
+    private CategoryInformation? category;
+
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        category = await context.CategoriesInformation.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (category is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+}

@@ -21,4 +21,8 @@
     <ProjectReference Include="..\CESIZen.Data\CESIZen.Data.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Controllers\" />
+  </ItemGroup>
+
 </Project>

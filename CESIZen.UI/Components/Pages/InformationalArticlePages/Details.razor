@@ -1,0 +1,144 @@
+﻿@page "/informationalArticles/details"
+@using Microsoft.EntityFrameworkCore
+@using CESIZen.Data.Entities
+@using CESIZen.Data.Enums
+@inject IDbContextFactory<CESIZen.Data.Context.CESIZenDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Détails de la ressource</PageTitle>
+
+@if (informationalArticle is null)
+{
+    <div class="d-flex justify-content-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Chargement...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h3 class="mb-0">@informationalArticle.Title</h3>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="mb-4">
+                        <h4>Description</h4>
+                        <p class="lead">@informationalArticle.Content</p>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <!-- Informations sur l'article -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Informations</h5>
+                        </div>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Catégorie</span>
+                                <span>@(informationalArticle.Category?.Name ?? "Non catégorisé")</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Date de création</span>
+                                <span>@informationalArticle.CreationDate.ToString("dd/MM/yyyy")</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <AuthorizeView>
+                        <Authorized>
+                            <!-- Actions -->
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Actions</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-grid gap-2">
+                                        <!-- Actions principales -->
+                                        <button class="btn btn-outline-primary" @onclick="ToggleFavorite">
+                                            <i class="bi bi-star@(isFavorite ? "-fill" : "")"></i>
+                                            @(isFavorite ? "Retirer des favoris" : "Ajouter aux favoris")
+                                        </button>
+
+                                        <!-- Suppression (admins seulement) -->
+                                        <div class="dropdown">
+                                            <a href="@($"informationalArticles/delete/{informationalArticle.Id}")" class="btn btn-outline-danger">
+                                                <i class="bi bi-trash"></i> Supprimer
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div
+                        </Authorized>
+                    </AuthorizeView>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <a href="/resources" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Retour aux articles
+            </a>
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    private InformationalArticle? informationalArticle;
+    private CategoryInformation? category;
+    private bool showDeleteModal = false;
+    private bool showShareModal = false;
+
+    // États de la ressource pour l'utilisateur actuel
+    private bool isFavorite = false;
+    private bool isExploited = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        // Chargement de la ressource avec sa catégorie
+        informationalArticle = await context.InformationalArticles
+            .Include(r => r.Category)
+            .FirstOrDefaultAsync(r => r.Id == Id);
+
+        if (informationalArticle is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+    }
+
+    private void ConfirmDelete()
+    {
+        showDeleteModal = true;
+    }
+
+    private async Task DeleteResource()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.InformationalArticles.Remove(informationalArticle!);
+        await context.SaveChangesAsync();
+
+        NavigationManager.NavigateTo("/informationalArticles");
+        showDeleteModal = false;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteModal = false;
+    }
+
+    private async Task ToggleFavorite()
+    {
+        isFavorite = !isFavorite;
+
+        // TODO : Logique pour ajouter/retirer des favoris
+    }
+}

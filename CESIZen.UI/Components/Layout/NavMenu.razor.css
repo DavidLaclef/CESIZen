@@ -17,7 +17,7 @@
 
 .top-row {
     height: 3.5rem;
-    background-color: rgb(5, 39, 103);
+    background-color: #328c8c;
 }
 
 .navbar-brand {
@@ -30,6 +30,7 @@
 .nav-scrollable {
     height: calc(100vh - 3.5rem);
     overflow-y: auto;
+    background-color: #f7ffff;
 }
 
 .nav-item {
@@ -79,6 +80,13 @@
 /* Icônes Bootstrap */
 .bi {
     display: inline-block;
-    font-size: 1.2rem;
+    font-size: 2rem;
     vertical-align: text-bottom;
+    color: #074c29;
+}
+
+.custom-nav-item-txt {
+    font-size: 1.3rem;
+    margin-left: 0.5rem;
+    color: #074c29;
 }

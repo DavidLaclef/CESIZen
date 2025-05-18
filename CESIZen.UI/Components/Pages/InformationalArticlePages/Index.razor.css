@@ -1,0 +1,10 @@
+﻿.bg-custom-login {
+    background-color: #328c8c;
+    color: white;
+}
+
+.alert, .alert-info {
+    background-color: #8c603299;
+    color: white;
+    border: transparent;
+}

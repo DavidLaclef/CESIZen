@@ -5,7 +5,7 @@
     height: 100%;
     width: 100%;
     padding: 0 0.5rem;
-    background-image: linear-gradient(90deg, rgb(5, 39, 103) 0%, #3a0647 70%);
+    background-color: #f7ffff;
 }
 
 .nav-item {
@@ -91,3 +91,16 @@
         margin-right: 0.5rem;
         margin-bottom: 0;
     }
+
+.bi {
+    display: inline-block;
+    font-size: 2rem;
+    vertical-align: text-bottom;
+    color: #074c29;
+}
+
+.custom-nav-item-txt {
+    font-size: 0.9rem;
+    margin-left: 0.5rem;
+    color: #074c29;
+}

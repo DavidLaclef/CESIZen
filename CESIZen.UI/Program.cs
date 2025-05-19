@@ -29,7 +29,8 @@ builder.Services.AddAntiforgery(options =>
 });
 
 // Configuration d'Identity
-builder.Services.AddDefaultIdentity<User>(options => {
+builder.Services.AddDefaultIdentity<User>(options =>
+{
     options.Password.RequireDigit = true;
     options.Password.RequireLowercase = true;
     options.Password.RequireUppercase = true;
@@ -52,7 +53,8 @@ builder.Services.AddDefaultIdentity<User>(options => {
     .AddSignInManager()
     .AddDefaultTokenProviders();
 
-builder.Services.AddAuthentication(options => {
+builder.Services.AddAuthentication(options =>
+{
     options.DefaultScheme = IdentityConstants.ApplicationScheme;
     options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
 });
@@ -115,6 +117,32 @@ using (var scope = app.Services.CreateScope())
 
             var result = await userManager.CreateAsync(testUser, "P@ssw0rd123");
 
+            if (result.Succeeded)
+            {
+                if (!await roleManager.RoleExistsAsync("Administrateur"))
+                {
+                    await roleManager.CreateAsync(new IdentityRole<int>("Administrateur"));
+                }
+                var roleResult = await userManager.AddToRoleAsync(testUser, "Administrateur");
+            }
+
+        }
+        else
+        {
+            if (!await userManager.IsInRoleAsync(existingUser, "Administrateur"))
+            {
+                var roleResult = await userManager.AddToRoleAsync(existingUser, "Administrateur");
+
+                if (roleResult.Succeeded)
+                {
+                    logger.LogInformation("Rôle Administrateur attribué à l'utilisateur Admin existant");
+                }
+                else
+                {
+                    logger.LogWarning("Échec de l'attribution du rôle Administrateur à l'utilisateur existant: {Errors}",
+                        string.Join(", ", roleResult.Errors.Select(e => e.Description)));
+                }
+            }
         }
     }
     catch (Exception ex)

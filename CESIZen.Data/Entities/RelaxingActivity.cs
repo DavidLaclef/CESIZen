@@ -12,7 +12,7 @@ public class RelaxingActivity
     public int Duration { get; set; } 
     public bool Enabled { get; set; } = true;
     public DateTime CreationDate { get; set; } = DateTime.Now;
-    public Enums.DifficultyLevel Type { get; set; }
+    public Enums.DifficultyLevel DifficultyLevel { get; set; }
 
     [ForeignKey(nameof(Category))]
     public int CategoryId { get; set; }

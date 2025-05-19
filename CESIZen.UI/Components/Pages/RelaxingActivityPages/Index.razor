@@ -1,29 +1,28 @@
-﻿@page "/"
-@page "/resources"
+﻿@page "/relaxingActivities"
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.EntityFrameworkCore
-@using R2.Data.Entities
-@using R2.Data.Context
-@using R2.Data.Enums
+@using CESIZen.Data.Entities
+@using CESIZen.Data.Context
+@using CESIZen.Data.Enums
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Linq.Expressions
 @implements IAsyncDisposable
-@inject IDbContextFactory<R2.Data.Context.R2DbContext> DbFactory
+@inject IDbContextFactory<CESIZen.Data.Context.CESIZenDbContext> DbFactory
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @rendermode InteractiveServer
 
-<PageTitle>Ressources</PageTitle>
+<PageTitle>Activité de détentes</PageTitle>
 
 <div class="container-fluid px-0">
     <AuthorizeView>
         <Authorized>
             <!-- Affichage pour les utilisateurs authentifiés -->
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
-                <h1 class="mb-0">Ressources</h1>
+                <h1 class="mb-0">Activités de détentes</h1>
                 <div>
-                    <a href="resources/create" class="btn btn-primary w-100 w-md-auto">
-                        <i class="bi bi-plus-circle"></i> Créer une nouvelle ressource
+                    <a href="relaxingActivities/create" class="btn btn-primary w-100 w-md-auto">
+                        <i class="bi bi-plus-circle"></i> Créer une nouvelle activité
                     </a>
                 </div>
             </div>
@@ -37,22 +36,12 @@
                     <div class="row g-3">
                         <!-- Filtres existants -->
                         <div class="col-md-6 col-lg-3">
-                            <label for="statusFilter" class="form-label">Statut</label>
-                            <select id="statusFilter" class="form-select" @bind="statusFilter">
+                            <label for="difficultyLevelFilter" class="form-label">Type</label>
+                            <select id="difficultyLevelFilter" class="form-select" @bind="difficultyLevelFilter">
                                 <option value="-1">Tous</option>
-                                @foreach (var status in Enum.GetValues(typeof(ResourceStatus)).Cast<ResourceStatus>().Where(s => s != ResourceStatus.Hanged))
+                                @foreach (var type in Enum.GetValues(typeof(DifficultyLevel)))
                                 {
-                                    <option value="@((int)status)">@GetStatusDisplayName(status)</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="col-md-6 col-lg-3">
-                            <label for="typeFilter" class="form-label">Type</label>
-                            <select id="typeFilter" class="form-select" @bind="typeFilter">
-                                <option value="-1">Tous</option>
-                                @foreach (var type in Enum.GetValues(typeof(ResourceType)))
-                                {
-                                    <option value="@((int)type)">@GetTypeDisplayName((ResourceType)type)</option>
+                                    <option value="@((int)type)">@GetDifficultyLevelDisplayName((DifficultyLevel)type)</option>
                                 }
                             </select>
                         </div>
@@ -104,7 +93,7 @@
         <NotAuthorized>
             <!-- Affichage pour les utilisateurs non authentifiés -->
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
-                <h1 class="mb-0">Ressources</h1>
+                <h1 class="mb-0">Activités de détentes</h1>
                 <div>
                     <a href="login" class="btn btn-primary w-100 w-md-auto">
                         <i class="bi bi-box-arrow-in-right"></i> Se connecter
@@ -112,7 +101,7 @@
                 </div>
             </div>
             <div class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i> Connectez-vous pour voir toutes les ressources et avoir accès à des fonctionnalités supplémentaires.
+                <i class="bi bi-info-circle me-2"></i> Connectez-vous pour voir toutes les activités de détentes et avoir accès à des fonctionnalités supplémentaires.
             </div>
 
             <!-- Options de tri pour les utilisateurs non authentifiés -->
@@ -142,8 +131,8 @@
         </NotAuthorized>
     </AuthorizeView>
 
-    @*RESSOURCES*@
-    @if (filteredResources == null)
+    @*ACTIVITES*@
+    @if (filteredRelaxingActivities == null)
     {
         <div class="d-flex justify-content-center">
             <div class="spinner-border text-primary" role="status">
@@ -151,10 +140,10 @@
             </div>
         </div>
     }
-    else if (!filteredResources.Any())
+    else if (!filteredRelaxingActivities.Any())
     {
         <div class="alert alert-info">
-            <i class="bi bi-info-circle me-2"></i> Aucune ressource ne correspond aux critères de recherche.
+            <i class="bi bi-info-circle me-2"></i> Aucune activité ne correspond aux critères de recherche.
         </div>
     }
     else
@@ -165,61 +154,61 @@
                 <i class="bi bi-sort"></i> Tri actuel : @GetSortOptionDisplayName()
             </div>
             <div class="text-muted small">
-                @filteredResources.Count ressource(s)
+                @filteredRelaxingActivities.Count activité(s)
             </div>
         </div>
 
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
-            @foreach (var resource in filteredResources)
+            @foreach (var relaxingActivity in filteredRelaxingActivities)
             {
                 <div class="col">
                     <div class="card h-100 shadow-sm">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <span class="badge @GetStatusBadgeClass(resource.Status)">
-                                @GetStatusDisplayName(resource.Status)
+                            <span class="badge @GetDifficultyLevelBadgeClass(relaxingActivity.DifficultyLevel)">
+                                @GetDifficultyLevelDisplayName(relaxingActivity.DifficultyLevel)
                             </span>
                             <span class="badge bg-primary">
-                                @GetTypeDisplayName(resource.Type)
+                                @GetDifficultyLevelDisplayName(relaxingActivity.DifficultyLevel)
                             </span>
                         </div>
                         <div class="card-body d-flex flex-column">
-                            <h5 class="card-title text-truncate">@resource.Name</h5>
+                            <h5 class="card-title text-truncate">@relaxingActivity.Name</h5>
                             <p class="card-text mb-auto overflow-hidden" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; max-height: 3em;">
-                                @resource.Description
+                                @relaxingActivity.Description
                             </p>
                             <div class="d-flex justify-content-between small text-muted mt-2">
-                                <span title="@resource.CreationDate.ToString("dd/MM/yyyy HH:mm")">
+                                <span title="@relaxingActivity.CreationDate.ToString("dd/MM/yyyy HH:mm")">
                                     <i class="bi bi-calendar3"></i> 
-                                    <span class="d-none d-sm-inline">@resource.CreationDate.ToString("dd/MM/yyyy HH:mm")</span>
-                                    <span class="d-inline d-sm-none">@resource.CreationDate.ToString("dd/MM/yy")</span>
+                                    <span class="d-none d-sm-inline">@relaxingActivity.CreationDate.ToString("dd/MM/yyyy HH:mm")</span>
+                                    <span class="d-inline d-sm-none">@relaxingActivity.CreationDate.ToString("dd/MM/yy")</span>
                                 </span>
                                 <span><i class="bi bi-tag"></i> 
-                                    <span class="text-truncate d-inline-block" style="max-width: 100px;">@(resource.Category?.Name ?? "Sans catégorie")</span>
+                                    <span class="text-truncate d-inline-block" style="max-width: 100px;">@(relaxingActivity.Category?.Name ?? "Sans catégorie")</span>
                                 </span>
                             </div>
                         </div>
                         <div class="card-footer bg-transparent">
 
-                            <AuthorizeView Roles="Citoyen">
+                            <AuthorizeView Roles="Utilisateur">
                                 <Authorized>
                                     <div class="d-flex flex-wrap gap-1">
-                                        <a href="@($"resources/details?id={resource.Id}")" class="btn btn-sm btn-primary flex-grow-1">
+                                        <a href="@($"relaxingActivities/details?id={relaxingActivity.Id}")" class="btn btn-sm btn-primary flex-grow-1">
                                             <i class="bi bi-eye"></i> <span class="d-none d-md-inline">Afficher</span>
                                         </a>
                                     </div>
                                 </Authorized>
                             </AuthorizeView>
 
-                            <AuthorizeView Roles="Administrateur,Super-Administrateur">
+                            <AuthorizeView Roles="Administrateur">
                                 <Authorized>
                                     <div class="d-flex flex-wrap gap-1">
-                                         <a href="@($"resources/details?id={resource.Id}")" class="btn btn-sm btn-primary flex-grow-1">
+                                         <a href="@($"relaxingActivities/details?id={relaxingActivity.Id}")" class="btn btn-sm btn-primary flex-grow-1">
                                             <i class="bi bi-eye"></i> <span class="d-none d-md-inline">Afficher</span>
                                         </a>
-                                        <a href="@($"resources/edit?id={resource.Id}")" class="btn btn-sm btn-secondary flex-grow-1">
+                                        <a href="@($"relaxingActivities/edit?id={relaxingActivity.Id}")" class="btn btn-sm btn-secondary flex-grow-1">
                                             <i class="bi bi-pencil"></i> <span class="d-none d-md-inline">Modifier</span>
                                         </a>
-                                        <a href="@($"resources/delete/{resource.Id}")" class="btn btn-sm btn-outline-danger flex-grow-1">
+                                        <a href="@($"relaxingActivities/delete/{relaxingActivity.Id}")" class="btn btn-sm btn-outline-danger flex-grow-1">
                                             <i class="bi bi-trash"></i> <span class="d-none d-md-inline">Supprimer</span>
                                         </a>
                                     </div>
@@ -229,15 +218,9 @@
                             <AuthorizeView>
                                 <Authorized>
                                     <div class="d-flex flex-wrap gap-1 mt-2">
-                                        <button class="btn btn-sm btn-outline-success flex-grow-1" @onclick="() => AddToFavorites(resource)">
+                                        <button class="btn btn-sm btn-outline-success flex-grow-1" @onclick="() => AddToFavorites(relaxingActivity)">
                                             <i class="bi bi-star"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-info flex-grow-1" @onclick="() => MarkAsExploited(resource)">
-                                            <i class="bi bi-check-circle"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-warning flex-grow-1" @onclick="() => ShareResource(resource)">
-                                            <i class="bi bi-share"></i>
-                                        </button>
+                                        </button>                                        
                                     </div>
                                 </Authorized>
                             </AuthorizeView>
@@ -245,7 +228,7 @@
                             <AuthorizeView>
                                 <NotAuthorized>
                                     <div class="d-flex flex-wrap gap-1">
-                                        <a href="@($"resources/details?id={resource.Id}")" class="btn btn-sm btn-outline-primary flex-grow-1">
+                                        <a href="@($"relaxingActivities/details?id={relaxingActivity.Id}")" class="btn btn-sm btn-outline-primary flex-grow-1">
                                             <i class="bi bi-eye"></i> Afficher
                                         </a>
                                     </div>
@@ -261,17 +244,16 @@
 </div>
 
 @code {
-    private R2DbContext context = default!;
-    private List<Resource> allResources = new List<Resource>();
-    private List<Resource> filteredResources = new List<Resource>();
-    private List<Category> categories = new List<Category>();
-    private int statusFilter = -1;
-    private int typeFilter = -1;
+    private CESIZenDbContext context = default!;
+    private List<RelaxingActivity> allRelaxingActivities = new List<RelaxingActivity>();
+    private List<RelaxingActivity> filteredRelaxingActivities = new List<RelaxingActivity>();
+    private List<CategoryRelaxingActivity> categories = new List<CategoryRelaxingActivity>();
+    private int difficultyLevelFilter = -1;
     private int categoryFilter = -1;
     private bool showDeleteModal = false;
     private bool showDeletedToast = false;
     private bool isDeleting = false;
-    private Resource resourceToDelete;
+    private RelaxingActivity relaxingActivityToDelete;
     private int relatedItemsCount = 0;
     private bool isAuthenticated = false;
 
@@ -293,22 +275,12 @@
     {
         try
         {
-            // Si l'utilisateur n'est pas authentifié, charger uniquement les ressources publiques
-            if (!isAuthenticated)
-            {
-                allResources = await context.Ressources
-                    .Include(r => r.Category)
-                    .Where(r => r.Status == ResourceStatus.Public)
-                    .ToListAsync();
-            }
-            else
-            {
-                allResources = await context.Ressources
-                    .Include(r => r.Category)
-                    .ToListAsync();
-            }
+            allRelaxingActivities = await context.RelaxingActivities
+                .Include(r => r.Category)
+                .ToListAsync();
+           
 
-            categories = await context.Categories.ToListAsync();
+            categories = await context.CategoriesRelaxingActivity.ToListAsync();
 
             ApplyFilters();
             ApplySorting();
@@ -317,9 +289,9 @@
         {
             Console.Error.WriteLine($"Erreur lors du chargement des données : {ex.Message}");
             // Initialiser avec des listes vides en cas d'erreur
-            allResources = new List<Resource>();
-            categories = new List<Category>();
-            filteredResources = new List<Resource>();
+            allRelaxingActivities = new List<RelaxingActivity>();
+            categories = new List<CategoryRelaxingActivity>();
+            filteredRelaxingActivities = new List<RelaxingActivity>();
         }
     }
 
@@ -327,33 +299,18 @@
     {
         try
         {
-            filteredResources = new List<Resource>(allResources);
+            filteredRelaxingActivities = new List<RelaxingActivity>(allRelaxingActivities);
 
-            if (statusFilter != -1)
+            if (difficultyLevelFilter != -1)
             {
-                filteredResources = filteredResources
-                    .Where(r => (int)r.Status == statusFilter)
-                    .ToList();
-            }
-
-            // Si l'utilisateur n'est pas authentifié, on s'assure toujours de n'avoir que des ressources publiques
-            if (!isAuthenticated)
-            {
-                filteredResources = filteredResources
-                    .Where(r => r.Status == ResourceStatus.Public)
-                    .ToList();
-            }
-
-            if (typeFilter != -1)
-            {
-                filteredResources = filteredResources
-                    .Where(r => (int)r.Type == typeFilter)
+                filteredRelaxingActivities = filteredRelaxingActivities
+                    .Where(r => (int)r.DifficultyLevel == difficultyLevelFilter)
                     .ToList();
             }
 
             if (categoryFilter != -1)
             {
-                filteredResources = filteredResources
+                filteredRelaxingActivities = filteredRelaxingActivities
                     .Where(r => r.CategoryId == categoryFilter)
                     .ToList();
             }
@@ -378,20 +335,20 @@
             switch (sortByOption)
             {
                 case 0: // Nom A-Z
-                    filteredResources = filteredResources.OrderBy(r => r.Name).ToList();
+                    filteredRelaxingActivities = filteredRelaxingActivities.OrderBy(r => r.Name).ToList();
                     break;
                 case 1: // Nom Z-A
-                    filteredResources = filteredResources.OrderByDescending(r => r.Name).ToList();
+                    filteredRelaxingActivities = filteredRelaxingActivities.OrderByDescending(r => r.Name).ToList();
                     break;
                 case 2: // Date (Plus récente)
-                    filteredResources = filteredResources.OrderByDescending(r => r.CreationDate).ToList();
+                    filteredRelaxingActivities = filteredRelaxingActivities.OrderByDescending(r => r.CreationDate).ToList();
                     break;
                 case 3: // Date (Plus ancienne)
-                    filteredResources = filteredResources.OrderBy(r => r.CreationDate).ToList();
+                    filteredRelaxingActivities = filteredRelaxingActivities.OrderBy(r => r.CreationDate).ToList();
                     break;
                 default:
                     // Par défaut : tri par date décroissante
-                    filteredResources = filteredResources.OrderByDescending(r => r.CreationDate).ToList();
+                    filteredRelaxingActivities = filteredRelaxingActivities.OrderByDescending(r => r.CreationDate).ToList();
                     break;
             }
             StateHasChanged();
@@ -415,68 +372,42 @@
 
     private void ResetFilters()
     {
-        statusFilter = -1;
-        typeFilter = -1;
+        difficultyLevelFilter = -1;
         categoryFilter = -1;
         ApplyFilters();
     }
 
-    private void ConfirmDelete(Resource resource)
+    private void ConfirmDelete(RelaxingActivity relaxingActivity)
     {
-        resourceToDelete = resource;
+        relaxingActivityToDelete = relaxingActivity;
         showDeleteModal = true;
     }
 
     // TODO
-    private async Task AddToFavorites(Resource resource)
+    private async Task AddToFavorites(RelaxingActivity relaxingActivity)
     {
         // Logique pour ajouter aux favoris
         // Nécessite l'utilisateur courant
     }
 
-    // TODO
-    private async Task MarkAsExploited(Resource resource)
+    private string GetDifficultyLevelDisplayName(DifficultyLevel difficultyLevel)
     {
-        // Logique pour marquer comme exploitée
-        // Nécessite l'utilisateur courant
-    }
-
-    // TODO
-    private void ShareResource(Resource resource)
-    {
-        // Logique pour partager
-        // Pourrait ouvrir un modal avec options de partage
-    }
-
-    private string GetStatusDisplayName(ResourceStatus status)
-    {
-        return status switch
+        return difficultyLevel switch
         {
-            ResourceStatus.Private => "Privé",
-            ResourceStatus.Public => "Public",
-            ResourceStatus.Draft => "Brouillon",
-            _ => ""
+            DifficultyLevel.Begginer => "Débutant",
+            DifficultyLevel.Intermediate => "Intermédiaire",
+            DifficultyLevel.Advanced => "Avancé",
+            _ => "Inconnu"
         };
     }
 
-    private string GetTypeDisplayName(ResourceType type)
+    private string GetDifficultyLevelBadgeClass(DifficultyLevel difficultyLevel)
     {
-        return type switch
+        return difficultyLevel switch
         {
-            ResourceType.Activity => "Activité",
-            ResourceType.Game => "Jeu",
-            ResourceType.Document => "Document",
-            _ => ""
-        };
-    }
-
-    private string GetStatusBadgeClass(ResourceStatus status)
-    {
-        return status switch
-        {
-            ResourceStatus.Private => "bg-secondary",
-            ResourceStatus.Public => "bg-success",
-            ResourceStatus.Draft => "bg-warning",
+            DifficultyLevel.Begginer => "bg-secondary",
+            DifficultyLevel.Intermediate => "bg-success",
+            DifficultyLevel.Advanced => "bg-warning",
             _ => "bg-info"
         };
     }

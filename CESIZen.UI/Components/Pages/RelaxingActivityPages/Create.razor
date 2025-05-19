@@ -1,12 +1,12 @@
-@page "/resources/create"
+@page "/relaxingActivities/create"
 @using Microsoft.EntityFrameworkCore
-@using R2.Data.Entities
-@using R2.Data.Enums
-@inject IDbContextFactory<R2.Data.Context.R2DbContext> DbFactory
+@using CESIZen.Data.Entities
+@using CESIZen.Data.Enums
+@inject IDbContextFactory<CESIZen.Data.Context.CESIZenDbContext> DbFactory
 @inject NavigationManager NavigationManager
 @rendermode InteractiveServer
 
-<PageTitle>Créer une ressource</PageTitle>
+<PageTitle>Créer une activité</PageTitle>
 
 <div class="container-fluid py-4">
     <div class="card shadow-sm">
@@ -14,79 +14,64 @@
             <h2 class="mb-0">Créer une nouvelle ressource</h2>
         </div>
         <div class="card-body">
-            <EditForm method="post" Model="Resource" OnValidSubmit="AddResource" FormName="create" Enhance>
+            <EditForm method="post" Model="relaxingActivity" OnValidSubmit="AddRelaxingActivity" FormName="create" Enhance>
                 <DataAnnotationsValidator />
                 <ValidationSummary class="alert alert-danger" role="alert" />
 
                 <div class="row mb-4">
                     <div class="col-md-12">
                         <div class="form-group mb-4">
-                            <label for="name" class="form-label fw-bold">Nom de la ressource <span class="text-danger">*</span></label>
-                            <InputText id="name" @bind-Value="Resource.Name" class="form-control form-control-lg" placeholder="Nom de la ressource" />
-                            <ValidationMessage For="() => Resource.Name" class="text-danger" />
+                            <label for="name" class="form-label fw-bold">Nom de l'activité<span class="text-danger">*</span></label>
+                            <InputText id="name" @bind-Value="relaxingActivity.Name" class="form-control form-control-lg" placeholder="Nom de l'activité" />
+                            <ValidationMessage For="() => relaxingActivity.Name" class="text-danger" />
                         </div>
 
                         <div class="form-group mb-4">
                             <label for="description" class="form-label fw-bold">Description <span class="text-danger">*</span></label>
-                            <InputTextArea id="description" @bind-Value="Resource.Description" class="form-control" rows="5" placeholder="Description détaillée de la ressource..." />
-                            <ValidationMessage For="() => Resource.Description" class="text-danger" />
+                            <InputTextArea id="description" @bind-Value="relaxingActivity.Description" class="form-control" rows="5" placeholder="Description de l'activité..." />
+                            <ValidationMessage For="() => relaxingActivity.Description" class="text-danger" />
                         </div>
                     </div>
                 </div>
 
-                <div class="row mb-4">
-                    <div class="col-md-4">
-                        <div class="form-group mb-3">
-                            <label for="type" class="form-label fw-bold">Type <span class="text-danger">*</span></label>
-                            <InputSelect id="type" @bind-Value="Resource.Type" class="form-select">
-                                @foreach (ResourceType type in Enum.GetValues(typeof(ResourceType)))
-                                {
-                                    <option value="@type">@GetResourceTypeDisplayName(type)</option>
-                                }
-                            </InputSelect>
-                            <ValidationMessage For="() => Resource.Type" class="text-danger" />
-                        </div>
+                <div class="col-md-4">
+                    <div class="form-group mb-3">
+                        <label for="difficultyLevel" class="form-label fw-bold">Difficulté <span class="text-danger">*</span></label>
+                        <InputSelect id="difficultyLevel" @bind-Value="relaxingActivity.DifficultyLevel" class="form-select">
+                            @foreach (DifficultyLevel difficultyLevel in Enum.GetValues(typeof(DifficultyLevel)))
+                            {
+                                <option value="@difficultyLevel">@GetDifficultyLevelDisplayName(difficultyLevel)</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => relaxingActivity.DifficultyLevel" class="text-danger" />
                     </div>
+                </div>
 
-                    <div class="col-md-4">
-                        <div class="form-group mb-3">
-                            <label for="status" class="form-label fw-bold">Statut <span class="text-danger">*</span></label>
-                            <InputSelect id="status" @bind-Value="Resource.Status" class="form-select">
-                                @foreach (var status in Enum.GetValues(typeof(ResourceStatus)).Cast<ResourceStatus>().Where(s => s != ResourceStatus.Hanged))
+                <div class="col-md-4">
+                    <div class="form-group mb-3">
+                        <label for="categoryid" class="form-label fw-bold">Catégorie <span class="text-danger">*</span></label>
+                        <InputSelect id="categoryid" @bind-Value="relaxingActivity.CategoryId" class="form-select" required>
+                            <option value="">Sélectionner une catégorie</option>
+                            @if (categories != null)
+                            {
+                                @foreach (var category in categories)
                                 {
-                                    <option value="@((int)status)">@GetResourceStatusDisplayName(status)</option>
+                                    <option value="@category.Id">@category.Name</option>
                                 }
-                            </InputSelect>
-                            <ValidationMessage For="() => Resource.Status" class="text-danger" />
-                        </div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <div class="form-group mb-3">
-                            <label for="categoryid" class="form-label fw-bold">Catégorie <span class="text-danger">*</span></label>
-                            <InputSelect id="categoryid" @bind-Value="Resource.CategoryId" class="form-select" required>
-                                <option value="">Sélectionner une catégorie</option>
-                                @if (Categories != null)
-                                {
-                                    @foreach (var category in Categories)
-                                    {
-                                        <option value="@category.Id">@category.Name</option>
-                                    }
-                                }
-                            </InputSelect>
-                            <ValidationMessage For="() => Resource.CategoryId" class="text-danger" />
-                            <small class="form-text text-muted">Sélection obligatoire pour catégoriser votre ressource.</small>
-                        </div>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => relaxingActivity.CategoryId" class="text-danger" />
+                        <small class="form-text text-muted">Sélection obligatoire pour catégoriser votre ressource.</small>
                     </div>
                 </div>
 
                 <div class="d-flex justify-content-between border-top pt-4">
-                    <a href="@($"/resources")" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> Retour à la liste
+                    <a href="@($"/relaxingActivity")" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Retour aux activités
                     </a>
                     <div>
                         <button type="submit" class="btn btn-success">
-                            <i class="bi bi-plus-circle"></i> Créer la ressource
+                            <i class="bi bi-plus-circle"></i> Créer l'activité
                         </button>
                     </div>
                 </div>
@@ -97,53 +82,35 @@
 
 @code {
     [SupplyParameterFromForm]
-    private Resource Resource { get; set; } = new();
+    private RelaxingActivity relaxingActivity { get; set; } = new();
 
-    internal List<Category>? Categories { get; set; }
+    private List<CategoryRelaxingActivity>? categories { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         using var context = DbFactory.CreateDbContext();
-        Categories = await context.Categories.ToListAsync();
-
-        if (Resource.Status == 0)
-            Resource.Status = ResourceStatus.Private;
-
-        if (Resource.Type == 0)
-            Resource.Type = ResourceType.Activity;
+        categories = await context.CategoriesRelaxingActivity.ToListAsync();
     }
 
-    internal string GetResourceTypeDisplayName(ResourceType type)
+    private string GetDifficultyLevelDisplayName(DifficultyLevel difficultyLevel)
     {
-        return type switch
+        return difficultyLevel switch
         {
-            ResourceType.Activity => "Activité",
-            ResourceType.Game => "Jeu",
-            ResourceType.Document => "Document",
-            _ => ""
+            DifficultyLevel.Begginer => "Débutant",
+            DifficultyLevel.Intermediate => "Intermédiaire",
+            DifficultyLevel.Advanced => "Avancé",
+            _ => "Inconnu"
         };
     }
 
-    internal string GetResourceStatusDisplayName(ResourceStatus status)
-    {
-        return status switch
-        {
-            ResourceStatus.Private => "Privé",
-            ResourceStatus.Public => "Public",
-            ResourceStatus.Draft => "Brouillon",
-            ResourceStatus.Hanged => "Suspendu",
-            _ => ""
-        };
-    }
-
-    internal async Task AddResource()
+    private async Task AddRelaxingActivity()
     {
         using var context = DbFactory.CreateDbContext();
 
-        Resource.CreationDate = DateTime.Now;
+        relaxingActivity.CreationDate = DateTime.Now;
 
-        context.Ressources.Add(Resource);
+        context.RelaxingActivities.Add(relaxingActivity);
         await context.SaveChangesAsync();
-        NavigationManager.NavigateTo("/resources");
+        NavigationManager.NavigateTo("/relaxingActivities");
     }
 }

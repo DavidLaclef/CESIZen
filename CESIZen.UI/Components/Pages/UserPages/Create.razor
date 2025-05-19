@@ -163,7 +163,7 @@
 
     [Required(ErrorMessage = "Le rôle est requis")]
     [SupplyParameterFromForm]
-    public string SelectedRole { get; set; } = "Citoyen"; // Rôle par défaut
+    public string SelectedRole { get; set; } = "Utilisateur"; // Rôle par défaut
 
     public List<string> Roles { get; set; } = new List<string>();
 
@@ -180,7 +180,7 @@
             // Si aucun rôle n'est trouvé, initialiser avec les rôles par défaut
             if (Roles.Count == 0)
             {
-                Roles = new List<string> { "Citoyen", "Administrateur", "Super-Administrateur", "Modérateur" };
+                Roles = new List<string> { "Utilisateur", "Administrateur" };
             }
 
             // S'assurer que le rôle par défaut est valide

@@ -9,7 +9,7 @@ namespace CESIZen.Data.DataSeed
             using var scope = serviceProvider.CreateScope();
             var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
 
-            string[] roleNames = { "Citoyen", "Administrateur", "Super-Administrateur", "Modérateur" };
+            string[] roleNames = { "Utilisateur", "Administrateur" };
 
             foreach (var roleName in roleNames)
             {

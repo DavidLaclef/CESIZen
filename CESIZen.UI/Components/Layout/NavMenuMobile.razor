@@ -13,12 +13,16 @@
             </button>
         </Authorized>
     </AuthorizeView>
-    <button type="button" class="nav-item" @onclick="GoToResources">
+    <button type="button" class="nav-item" @onclick="GoToArticles">
         <i class="bi bi-collection"></i>
-        <span class="custom-nav-item-txt nav-label">Ressources</span>
+        <span class="custom-nav-item-txt nav-label">Articles</span>
+    </button>
+    <button type="button" class="nav-item" @onclick="GoToActivities">
+        <i class="bi bi-collection"></i>
+        <span class="custom-nav-item-txt nav-label">Activités</span>
     </button>
 
-    <AuthorizeView Roles="Administrateur,Super-Administrateur">
+    <AuthorizeView Roles="Administrateur">
         <Authorized>
             <div class="nav-item dropdown">
                 <button type="button" class="nav-item-btn" @onclick="ToggleAdminMenu">
@@ -29,7 +33,10 @@
                 @if (showAdminMenu)
                 {
                     <div class="dropdown-menu">
-                        <button type="button" class="dropdown-item" @onclick="GoToCategories">
+                        <button type="button" class="dropdown-item" @onclick="GoToCategoriesArticles">
+                            <i class="bi bi-tags"></i> <span class="custom-nav-item-txt nav-label">Catégories articles</span>
+                        </button>
+                        <button type="button" class="dropdown-item" @onclick="GoToCategoriesActivities">
                             <i class="bi bi-tags"></i> <span class="custom-nav-item-txt nav-label">Catégories</span>
                         </button>
                         <button type="button" class="dropdown-item" @onclick="GoToUsers">
@@ -70,29 +77,29 @@
         NavigationManager.NavigateTo("profile");
     }
 
-    private void GoToResources()
+    private void GoToArticles()
     {
-        NavigationManager.NavigateTo("resources");
+        NavigationManager.NavigateTo("informationalArticles");
     }
 
-    private void GoToCategories()
+    private void GoToActivities()
     {
-        NavigationManager.NavigateTo("categories");
+        NavigationManager.NavigateTo("relaxingActivities");
+    }
+
+    private void GoToCategoriesArticles()
+    {
+        NavigationManager.NavigateTo("categoriesInformation");
+    }
+
+    private void GoToCategoriesActivities()
+    {
+        NavigationManager.NavigateTo("categoriesRelaxingActivity");
     }
 
     private void GoToUsers()
     {
         NavigationManager.NavigateTo("users");
-    }
-
-    private void GoToUserRights()
-    {
-        NavigationManager.NavigateTo("userrights");
-    }
-
-    private void GoToStatistics()
-    {
-        NavigationManager.NavigateTo("statistics");
     }
 
     private void GoToLogout()

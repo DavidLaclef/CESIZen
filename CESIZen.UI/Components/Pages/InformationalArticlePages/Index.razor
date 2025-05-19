@@ -83,7 +83,7 @@
         <NotAuthorized>
             <!-- Affichage pour les utilisateurs non authentifiés -->
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
-                <h1 class="mb-0">Ressources</h1>
+                <h1 class="mb-0">Articles</h1>
                 <div>
                     <a href="login" class="bg-custom-login btn w-100 w-md-auto">
                         <i class="bi bi-box-arrow-in-right"></i> Se connecter
@@ -91,7 +91,7 @@
                 </div>
             </div>
             <div class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i> Connectez-vous pour voir toutes les ressources et avoir accès à des fonctionnalités supplémentaires.
+                <i class="bi bi-info-circle me-2"></i> Connectez-vous pour voir tous les articles et avoir accès à des fonctionnalités supplémentaires.
             </div>
 
             <!-- Options de tri pour les utilisateurs non authentifiés -->
@@ -121,7 +121,7 @@
         </NotAuthorized>
     </AuthorizeView>
 
-    @*RESSOURCES*@
+    @*ARTICLES*@
     @if (filteredinformationalArticles == null)
     {
         <div class="d-flex justify-content-center">
@@ -311,19 +311,9 @@
     {
         try
         {
-            // Si l'utilisateur n'est pas authentifié, charger uniquement les ressources publiques
-            if (!isAuthenticated)
-            {
-                allinformationalArticles = await context.InformationalArticles
-                    .Include(r => r.Category)
-                    .ToListAsync();
-            }
-            else
-            {
-                allinformationalArticles = await context.InformationalArticles
-                    .Include(r => r.Category)
-                    .ToListAsync();
-            }
+            allinformationalArticles = await context.InformationalArticles
+                .Include(r => r.Category)
+                .ToListAsync();
 
             categories = await context.CategoriesInformation.ToListAsync();
 

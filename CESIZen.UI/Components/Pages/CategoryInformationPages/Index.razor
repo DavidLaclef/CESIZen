@@ -28,7 +28,7 @@
                         <h5 class="mb-1">@category.Name</h5>
                         <p class="small text-muted mb-0">
                             <i class="bi bi-collection"></i>
-                            @(resourcesCount.GetValueOrDefault(category.Id, 0)) ressource(s) associée(s)
+                            @(informationalArticleCount.GetValueOrDefault(category.Id, 0)) articles(s) associée(s)
                         </p>
                     </div>
                     <div>
@@ -60,7 +60,7 @@
                 <div class="modal-body">
                     <p>Êtes-vous sûr de vouloir supprimer la catégorie <strong>@categoryToDelete?.Name</strong> ?</p>
                     <p class="text-danger">
-                        <i class="bi bi-exclamation-triangle"></i> Cette action est irréversible et peut affecter les ressources associées à cette catégorie.
+                        <i class="bi bi-exclamation-triangle"></i> Cette action est irréversible et peut affecter les articles associées à cette catégorie.
                     </p>
                 </div>
                 <div class="modal-footer">
@@ -76,7 +76,7 @@
 @code {
     private CESIZenDbContext context = default!;
     private List<CategoryInformation> allCategories = new List<CategoryInformation>();
-    private Dictionary<int, int> categoriesCount = new Dictionary<int, int>();
+    private Dictionary<int, int> informationalArticleCount = new Dictionary<int, int>();
     private string sortBy = "name";
     private bool showDeleteModal = false;
     private CategoryInformation categoryToDelete;
@@ -93,7 +93,7 @@
 
         // Charger le nombre d'articles pour chaque catégorie
         var articles = await context.InformationalArticles.ToListAsync();
-        categoriesCount = articles
+        informationalArticleCount = articles
             .GroupBy(r => r.CategoryId)
             .ToDictionary(g => g.Key, g => g.Count());
     }

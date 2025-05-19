@@ -133,7 +133,7 @@
         if (UserManager != null)
         {
             var roles = await UserManager.GetRolesAsync(user);
-            userRole = roles.FirstOrDefault() ?? "Citoyen";
+            userRole = roles.FirstOrDefault() ?? "Utilisateur";
         }
     }
 }

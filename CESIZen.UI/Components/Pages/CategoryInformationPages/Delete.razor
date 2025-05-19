@@ -41,7 +41,7 @@ else
                     <hr />
                     <p class="mb-0">
                         <strong>Attention :</strong> Cette catégorie est utilisée par @resourceCount ressource(s).
-                        Ces ressources seront décatégorisées si vous supprimez cette catégorie.
+                        Ces éléments seront décatégorisées si vous supprimez cette catégorie.
                     </p>
                 }
             </div>
@@ -89,7 +89,7 @@ else
             return;
         }
 
-        // Compter le nombre de ressources associées à cette catégorie
+        // Compter le nombre d'articles associées à cette catégorie
         resourceCount = await context.InformationalArticles
             .Where(r => r.CategoryId == Id)
             .CountAsync();

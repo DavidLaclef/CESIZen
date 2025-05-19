@@ -242,7 +242,7 @@
             {
                 Logger.LogInformation($"Utilisateur inscrit avec succès: {user.Email}");
 
-                var roleResult = await UserManager.AddToRoleAsync(user, "Citoyen");
+                var roleResult = await UserManager.AddToRoleAsync(user, "Utilisateur");
 
                 if (roleResult.Succeeded)
                 {

@@ -59,9 +59,7 @@ builder.Services.AddAuthentication(options => {
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("RequireAdminRole", policy => policy.RequireRole("Administrateur", "Super-Administrateur"));
-    options.AddPolicy("RequireSuperAdminRole", policy => policy.RequireRole("Super-Administrateur"));
-    options.AddPolicy("RequireModeratorRole", policy => policy.RequireRole("Modérateur", "Administrateur", "Super-Administrateur"));
+    options.AddPolicy("RequireAdminRole", policy => policy.RequireRole("Administrateur"));
 });
 
 builder.Services.AddCascadingAuthenticationState();
@@ -117,31 +115,6 @@ using (var scope = app.Services.CreateScope())
 
             var result = await userManager.CreateAsync(testUser, "P@ssw0rd123");
 
-            if (result.Succeeded)
-            {
-                if (!await roleManager.RoleExistsAsync("Super-Administrateur"))
-                {
-                    await roleManager.CreateAsync(new IdentityRole<int>("Super-Administrateur"));
-                }
-                var roleResult = await userManager.AddToRoleAsync(testUser, "Super-Administrateur");
-            }
-        }
-        else
-        {
-            if (!await userManager.IsInRoleAsync(existingUser, "Super-Administrateur"))
-            {
-                var roleResult = await userManager.AddToRoleAsync(existingUser, "Super-Administrateur");
-
-                if (roleResult.Succeeded)
-                {
-                    logger.LogInformation("Rôle Super-Administrateur attribué à l'utilisateur Admin existant");
-                }
-                else
-                {
-                    logger.LogWarning("Échec de l'attribution du rôle Super-Administrateur à l'utilisateur existant: {Errors}",
-                        string.Join(", ", roleResult.Errors.Select(e => e.Description)));
-                }
-            }
         }
     }
     catch (Exception ex)

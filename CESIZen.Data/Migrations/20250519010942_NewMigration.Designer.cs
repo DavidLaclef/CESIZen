@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CESIZen.Data.Migrations
 {
     [DbContext(typeof(CESIZenDbContext))]
-    [Migration("20250519004824_NewMigration")]
+    [Migration("20250519010942_NewMigration")]
     partial class NewMigration
     {
         /// <inheritdoc />

@@ -145,7 +145,7 @@
                 <i class="bi bi-sort"></i> Tri actuel : @GetSortOptionDisplayName()
             </div>
             <div class="text-muted small">
-                @filteredinformationalArticles.Count ressource(s)
+                @filteredinformationalArticles.Count article(s)
             </div>
         </div>
 
@@ -241,13 +241,13 @@
                         else
                         {
                             <div class="mb-3">
-                                <p>Êtes-vous sûr de vouloir supprimer la ressource <strong>"@informationalArticlesToDelete?.Title"</strong> ?</p>
+                                <p>Êtes-vous sûr de vouloir supprimer l'article <strong>"@informationalArticlesToDelete?.Title"</strong> ?</p>
 
                                 @if (relatedItemsCount > 0)
                                 {
                                     <div class="alert alert-warning">
                                         <i class="bi bi-exclamation-triangle me-2"></i>
-                                        <strong>Attention :</strong> Cette ressource est utilisée dans @relatedItemsCount élément(s).
+                                        <strong>Attention :</strong> Cet article est utilisée dans @relatedItemsCount élément(s).
                                         La suppression affectera tous ces éléments liés.
                                     </div>
                                 }
@@ -283,7 +283,7 @@
                     <button type="button" class="btn-close btn-close-white" @onclick="() => showDeletedToast = false"></button>
                 </div>
                 <div class="toast-body">
-                    La ressource a été supprimée avec succès.
+                    L'article a été supprimée avec succès.
                 </div>
             </div>
         </div>
@@ -433,7 +433,6 @@
                 isDeleting = true;
                 StateHasChanged();
 
-                // Supprimer la ressource
                 context.InformationalArticles.Remove(informationalArticlesToDelete);
                 await context.SaveChangesAsync();
 

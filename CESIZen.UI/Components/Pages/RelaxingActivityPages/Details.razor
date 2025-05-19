@@ -5,7 +5,7 @@
 @inject IDbContextFactory<CESIZen.Data.Context.CESIZenDbContext> DbFactory
 @inject NavigationManager NavigationManager
 
-<PageTitle>Détails de la ressource</PageTitle>
+<PageTitle>Détails de l'activité</PageTitle>
 
 @if (relaxingActivity is null)
 {
@@ -108,7 +108,6 @@ else
     {
         using var context = DbFactory.CreateDbContext();
 
-        // Chargement de la ressource avec sa catégorie
         relaxingActivity = await context.RelaxingActivities
             .Include(r => r.Category)
             .FirstOrDefaultAsync(r => r.Id == Id);

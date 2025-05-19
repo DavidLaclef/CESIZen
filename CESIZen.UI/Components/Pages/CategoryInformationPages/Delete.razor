@@ -36,11 +36,11 @@ else
                     <i class="bi bi-exclamation-triangle-fill me-2"></i>
                     Êtes-vous sûr de vouloir supprimer définitivement cette catégorie ? Cette action est irréversible.
                 </p>
-                @if (resourceCount > 0)
+                @if (informationArticlesCount > 0)
                 {
                     <hr />
                     <p class="mb-0">
-                        <strong>Attention :</strong> Cette catégorie est utilisée par @resourceCount ressource(s).
+                        <strong>Attention :</strong> Cette catégorie est utilisée par @informationArticlesCount article(s).
                         Ces éléments seront décatégorisées si vous supprimez cette catégorie.
                     </p>
                 }
@@ -76,7 +76,7 @@ else
     public int Id { get; set; }
 
     private CategoryInformation? category;
-    private int resourceCount = 0;
+    private int informationArticlesCount = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -90,7 +90,7 @@ else
         }
 
         // Compter le nombre d'articles associées à cette catégorie
-        resourceCount = await context.InformationalArticles
+        informationArticlesCount = await context.InformationalArticles
             .Where(r => r.CategoryId == Id)
             .CountAsync();
     }

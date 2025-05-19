@@ -6,7 +6,7 @@
 @inject NavigationManager NavigationManager
 @rendermode InteractiveServer
 
-<PageTitle>Détails de la ressource</PageTitle>
+<PageTitle>Détails de l'article</PageTitle>
 
 @if (informationalArticle is null)
 {
@@ -109,15 +109,12 @@ else
     private bool showDeleteModal = false;
     private bool showShareModal = false;
 
-    // États de la ressource pour l'utilisateur actuel
     private bool isFavorite = false;
-    private bool isExploited = false;
 
     protected override async Task OnInitializedAsync()
     {
         using var context = DbFactory.CreateDbContext();
 
-        // Chargement de la ressource avec sa catégorie
         informationalArticle = await context.InformationalArticles
             .Include(r => r.Category)
             .FirstOrDefaultAsync(r => r.Id == Id);

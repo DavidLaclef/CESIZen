@@ -11,7 +11,7 @@
 <div class="container-fluid py-4">
     <div class="card shadow-sm">
         <div class="card-header bg-primary text-white">
-            <h2 class="mb-0">Créer une nouvelle ressource</h2>
+            <h2 class="mb-0">Créer un nouvel article</h2>
         </div>
         <div class="card-body">
             <EditForm method="post" Model="informationalArticle" OnValidSubmit="AddInformationalArticle" FormName="create" Enhance>
@@ -22,13 +22,13 @@
                     <div class="col-md-12">
                         <div class="form-group mb-4">
                             <label for="name" class="form-label fw-bold">Nom de l'article<span class="text-danger">*</span></label>
-                            <InputText id="name" @bind-Value="informationalArticle.Title" class="form-control form-control-lg" placeholder="Nom de la ressource" />
+                            <InputText id="name" @bind-Value="informationalArticle.Title" class="form-control form-control-lg" placeholder="Nom de l'article'" />
                             <ValidationMessage For="() => informationalArticle.Title" class="text-danger" />
                         </div>
 
                         <div class="form-group mb-4">
                             <label for="description" class="form-label fw-bold">Description <span class="text-danger">*</span></label>
-                            <InputTextArea id="description" @bind-Value="informationalArticle.Content" class="form-control" rows="5" placeholder="Description détaillée de la ressource..." />
+                            <InputTextArea id="description" @bind-Value="informationalArticle.Content" class="form-control" rows="5" placeholder="Description de l'artilce..." />
                             <ValidationMessage For="() => informationalArticle.Content" class="text-danger" />
                         </div>
                     </div>
@@ -48,7 +48,7 @@
                             }
                         </InputSelect>
                         <ValidationMessage For="() => informationalArticle.CategoryId" class="text-danger" />
-                        <small class="form-text text-muted">Sélection obligatoire pour catégoriser votre ressource.</small>
+                        <small class="form-text text-muted">Sélection obligatoire pour catégoriser votre article.</small>
                     </div>
                 </div>
 

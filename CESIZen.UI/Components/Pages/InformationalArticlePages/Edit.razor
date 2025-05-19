@@ -5,12 +5,12 @@
 @inject IDbContextFactory<CESIZen.Data.Context.CESIZenDbContext> DbFactory
 @inject NavigationManager NavigationManager
 
-<PageTitle>Modifier une ressource</PageTitle>
+<PageTitle>Modifier un article</PageTitle>
 
 <div class="container-fluid py-4">
     <div class="card shadow-sm">
         <div class="card-header bg-primary text-white">
-            <h2 class="mb-0">Modifier une ressource</h2>
+            <h2 class="mb-0">Modifier un article</h2>
         </div>
 
         @if (informationalArticle is null)
@@ -35,7 +35,7 @@
                     <div class="row mb-4">
                         <div class="col-md-12">
                             <div class="form-group mb-4">
-                                <label for="name" class="form-label fw-bold">Nom de la ressource <span class="text-danger">*</span></label>
+                                <label for="name" class="form-label fw-bold">Nom de l'article<span class="text-danger">*</span></label>
                                 <InputText id="name" @bind-Value="informationalArticle.Title" class="form-control form-control-lg" placeholder="Nom de l'article'" />
                                 <ValidationMessage For="() => informationalArticle.Title" class="text-danger" />
                             </div>

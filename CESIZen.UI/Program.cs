@@ -98,14 +98,14 @@ using (var scope = app.Services.CreateScope())
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole<int>>>();
         var logger = services.GetRequiredService<ILogger<Program>>();
 
-        var existingUser = await userManager.FindByEmailAsync("admin@example.com");
+        var existingUser = await userManager.FindByEmailAsync("admin@admin.com");
 
         if (existingUser == null)
         {
             var testUser = new User
             {
                 UserName = "Admin",
-                Email = "admin@example.com",
+                Email = "admin@admin.com",
                 Name = "Admin",
                 LastName = "Admin",
                 Pseudo = "Admin",

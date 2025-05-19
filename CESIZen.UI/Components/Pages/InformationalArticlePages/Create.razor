@@ -6,7 +6,7 @@
 @inject NavigationManager NavigationManager
 @rendermode InteractiveServer
 
-<PageTitle>Créer une ressource</PageTitle>
+<PageTitle>Créer un article</PageTitle>
 
 <div class="container-fluid py-4">
     <div class="card shadow-sm">
@@ -58,7 +58,7 @@
                     </a>
                     <div>
                         <button type="submit" class="btn btn-success">
-                            <i class="bi bi-plus-circle"></i> Créer la ressource
+                            <i class="bi bi-plus-circle"></i> Créer l'article
                         </button>
                     </div>
                 </div>
@@ -87,6 +87,6 @@
 
         context.InformationalArticles.Add(informationalArticle);
         await context.SaveChangesAsync();
-        NavigationManager.NavigateTo("/informationalArticle");
+        NavigationManager.NavigateTo("/informationalArticles");
     }
 }

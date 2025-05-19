@@ -49,7 +49,7 @@ else
                         </ul>
                     </div>
 
-                    <AuthorizeView>
+                    <AuthorizeView Roles="Utilisateur">
                         <Authorized>
                             <!-- Actions -->
                             <div class="card mb-4">
@@ -63,7 +63,21 @@ else
                                             <i class="bi bi-star@(isFavorite ? "-fill" : "")"></i>
                                             @(isFavorite ? "Retirer des favoris" : "Ajouter aux favoris")
                                         </button>
+                                    </div>
+                                </div>
+                            </div
+                        </Authorized>
+                    </AuthorizeView>
 
+                    <AuthorizeView Roles="Administrateur">
+                        <Authorized>
+                            <!-- Actions -->
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Actions</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-grid gap-2">
                                         <!-- Suppression (admins seulement) -->
                                         <div class="dropdown">
                                             <a href="@($"informationalArticles/delete/{informationalArticle.Id}")" class="btn btn-outline-danger">

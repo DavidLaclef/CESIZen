@@ -13,7 +13,7 @@
             <Authorized>
                 <div class="user-greeting px-3 py-2 text-white">
                     <i class="bi bi-person-circle me-2"></i>
-                    Bonjour @context.User.Identity?.Name !
+                    <span class="custom-nav-item-txt">Namasté @context.User.Identity?.Name !</span>
                 </div>
                 <div class="nav-divider"></div>
             </Authorized>
@@ -21,12 +21,12 @@
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="informationalArticles" Match="NavLinkMatch.All">
-                <i class="bi bi-collection me-2"></i> <span class="custom-nav-item-txt"> Articles</span>
+                <i class="bi bi-envelope-paper me-2"></i> <span class="custom-nav-item-txt"> Articles</span>
             </NavLink>
         </div>
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="relaxingActivities" Match="NavLinkMatch.All">
-                <i class="bi bi-collection me-2"></i> <span class="custom-nav-item-txt"> Activités de détentes</span>
+                <i class="bi bi-person-walking me-2"></i> <span class="custom-nav-item-txt"> Activités de détentes</span>
             </NavLink>
         </div>
 

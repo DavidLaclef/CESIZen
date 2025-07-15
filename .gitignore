@@ -482,3 +482,76 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Ajouts spécifiques pour CESIZen CI/CD
+
+# Variables d'environnement sensibles
+.env
+.env.local
+.env.production.local
+.env.staging
+*.env
+
+# Fichiers de configuration locaux
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
+
+# Logs et monitoring
+logs/
+*.log
+health-check.log
+monitor.log
+backup.log
+
+# Sauvegardes
+backups/
+*.bak
+*.tar.gz
+
+# Certificats SSL
+*.pem
+*.key
+*.crt
+*.pfx
+ssl/
+
+# Docker
+.docker/
+docker-data/
+mysql/
+sqlserver_data/
+
+# Données de base de données locales
+*.mdf
+*.ldf
+*.ndf
+
+# Fichiers temporaires de déploiement
+deployment-artifacts/
+temp-deploy/
+
+# Secrets et clés
+secrets.json
+private-key
+id_rsa*
+known_hosts
+
+# SonarQube
+.sonarqube/
+.scannerwork/
+
+# Coverage reports
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# Azure et outils cloud
+.azure/
+azure-pipelines/
+
+# Monitoring et métriques
+metrics/
+prometheus/
+grafana/

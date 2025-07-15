@@ -1,0 +1,151 @@
+name: 02-1 - Docker Build and Push
+
+on:
+  workflow_call
+
+env:
+  REGISTRY: ghcr.io
+  USERNAME: ${{ github.actor }}
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.USERNAME }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for API
+        id: meta-api
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Extract metadata for UI
+        id: meta-ui
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-ui
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: CESIZen.API/Dockerfile
+          push: true
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      - name: Build and push UI image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: CESIZen.UI/Dockerfile
+          push: true
+          tags: ${{ steps.meta-ui.outputs.tags }}
+          labels: ${{ steps.meta-ui.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      - name: Generate deployment artifacts
+        run: |
+          mkdir -p deployment-artifacts
+
+          # Copier les fichiers de déploiement
+          cp docker-compose.yml deployment-artifacts/
+          cp -r nginx deployment-artifacts/
+
+          # Créer un script de déploiement
+          cat > deployment-artifacts/deploy.sh << 'EOF'
+          #!/bin/bash
+          set -e
+
+          echo "🚀 Début du déploiement CESIZen..."
+
+          # Variables
+          COMPOSE_FILE="docker-compose.yml"
+          BACKUP_DIR="backups/$(date +%Y%m%d_%H%M%S)"
+
+          # Créer le répertoire de sauvegarde
+          mkdir -p "$BACKUP_DIR"
+
+          # Sauvegarder la base de données si elle existe
+          if docker container inspect cesizen_sqlserver >/dev/null 2>&1; then
+              echo "📦 Sauvegarde de la base de données..."
+              docker exec cesizen_sqlserver /opt/mssql-tools/bin/sqlcmd \
+                  -S localhost -U sa -P "${SQL_SERVER_PASSWORD:-Strong!Passw0rd}" \
+                  -Q "BACKUP DATABASE [CESIZenDatabase] TO DISK = '/tmp/backup.bak'" || true
+              docker cp cesizen_sqlserver:/tmp/backup.bak "$BACKUP_DIR/" || true
+          fi
+
+          # Arrêter les services existants
+          echo "⏹️ Arrêt des services existants..."
+          docker-compose -f "$COMPOSE_FILE" down || true
+
+          # Nettoyer les images obsolètes
+          echo "🧹 Nettoyage des images obsolètes..."
+          docker system prune -f || true
+
+          # Télécharger les nouvelles images
+          echo "📥 Téléchargement des nouvelles images..."
+          docker-compose -f "$COMPOSE_FILE" pull
+
+          # Démarrer les services
+          echo "🔄 Démarrage des services..."
+          docker-compose -f "$COMPOSE_FILE" up -d
+
+          # Attendre que les services soient prêts
+          echo "⏳ Attente de la disponibilité des services..."
+          sleep 30
+
+          # Vérifier le statut des services
+          echo "🔍 Vérification du statut des services..."
+          docker-compose -f "$COMPOSE_FILE" ps
+
+          # Test de santé basique
+          echo "🏥 Test de santé des services..."
+          timeout 60 bash -c 'until curl -sf http://localhost:80/health 2>/dev/null; do sleep 2; done' || echo "⚠️ Service UI non accessible"
+          timeout 60 bash -c 'until curl -sf http://localhost:5000/health 2>/dev/null; do sleep 2; done' || echo "⚠️ Service API non accessible"
+
+          echo "✅ Déploiement terminé!"
+          echo "🌐 Application disponible sur : http://$(hostname -I | awk '{print $1}')"
+          EOF
+
+          chmod +x deployment-artifacts/deploy.sh
+
+      - name: Upload deployment artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-artifacts
+          path: deployment-artifacts/
+          retention-days: 30

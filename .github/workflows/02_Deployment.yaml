@@ -1,0 +1,28 @@
+name: 02 - Deployment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  docker-build:
+    name: Build Docker Images
+    uses: ./.github/workflows/02-1_DockerBuild.yaml
+    secrets: inherit
+
+  deploy:
+    name: Deploy to Azure
+    needs: [docker-build]
+    uses: ./.github/workflows/02-2_Deploy.yaml
+    secrets: inherit

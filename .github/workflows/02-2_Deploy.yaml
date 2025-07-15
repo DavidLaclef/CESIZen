@@ -1,0 +1,93 @@
+name: 02-2 - Deploy to Azure VM
+
+on:
+  workflow_call
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Download deployment artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-artifacts
+          path: ./deployment/
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AZURE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.AZURE_VM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Copy deployment files to server
+        run: |
+          scp -r ./deployment/* ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}:~/cesizen/
+
+      - name: Deploy application
+        run: |
+          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} << 'ENDSSH'
+            cd ~/cesizen
+
+            # Configurer les variables d'environnement
+            export SQL_SERVER_PASSWORD="${{ secrets.SQL_SERVER_PASSWORD }}"
+
+            # Se connecter au registre Docker
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Mettre à jour le fichier docker-compose avec les bonnes images
+            sed -i 's|ghcr.io/votre-username/cesizen-api:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:latest|g' docker-compose.yml
+            sed -i 's|ghcr.io/votre-username/cesizen-ui:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-ui:latest|g' docker-compose.yml
+
+            # Exécuter le script de déploiement
+            chmod +x deploy.sh
+            ./deploy.sh
+
+            # Vérifier que les services sont démarrés
+            docker-compose ps
+
+            # Afficher les logs en cas de problème
+            if [ "$(docker-compose ps | grep -c 'Up')" -lt 3 ]; then
+              echo "❌ Certains services ne sont pas démarrés correctement"
+              docker-compose logs
+              exit 1
+            else
+              echo "✅ Tous les services sont opérationnels"
+            fi
+          ENDSSH
+
+      - name: Health check
+        run: |
+          # Attendre un peu que les services soient complètement prêts
+          sleep 60
+
+          # Test de santé de l'application
+          if curl -f -s --max-time 30 http://${{ secrets.AZURE_VM_HOST }}/ > /dev/null; then
+            echo "✅ Application UI accessible"
+          else
+            echo "❌ Application UI non accessible"
+            exit 1
+          fi
+
+          if curl -f -s --max-time 30 http://${{ secrets.AZURE_VM_HOST }}:5000/swagger > /dev/null; then
+            echo "✅ API accessible"
+          else
+            echo "❌ API non accessible"
+            exit 1
+          fi
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "🎉 Déploiement réussi!"
+          echo "🌐 Application disponible sur: http://${{ secrets.AZURE_VM_HOST }}"
+          echo "📚 API Swagger: http://${{ secrets.AZURE_VM_HOST }}:5000/swagger"
+
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "❌ Échec du déploiement"
+          echo "Consultez les logs pour plus de détails"

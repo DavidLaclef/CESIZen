@@ -1,0 +1,160 @@
+name: 01-1 - Test and Build CESIZen
+
+on:
+  workflow_call
+
+jobs:
+  test-api:
+    name: Test API
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: Strong!Passw0rd
+          MSSQL_PID: Express
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd="/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P Strong!Passw0rd -Q 'SELECT 1'"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release --verbosity normal
+        env:
+          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=CESIZenTestDb;User Id=sa;Password=Strong!Passw0rd;TrustServerCertificate=true;"
+
+  test-ui:
+    name: Test UI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: Strong!Passw0rd
+          MSSQL_PID: Express
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd="/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P Strong!Passw0rd -Q 'SELECT 1'"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build UI
+        run: dotnet build CESIZen.UI --no-restore --configuration Release
+
+      - name: Test UI build
+        run: dotnet build CESIZen.UI --configuration Release --verbosity normal
+        env:
+          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=CESIZenTestDb;User Id=sa;Password=Strong!Passw0rd;TrustServerCertificate=true;"
+
+  build-docker-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [test-api, test-ui]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build API Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: CESIZen.API/Dockerfile
+          push: false
+          tags: cesizen-api:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build UI Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: CESIZen.UI/Dockerfile
+          push: false
+          tags: cesizen-ui:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test Docker Compose
+        run: |
+          # Créer un fichier docker-compose de test
+          cat > docker-compose.test.yml << EOF
+          version: '3.8'
+          services:
+            cesizen_db:
+              image: mcr.microsoft.com/mssql/server:2022-latest
+              environment:
+                - ACCEPT_EULA=Y
+                - SA_PASSWORD=Strong!Passw0rd
+                - MSSQL_PID=Express
+              healthcheck:
+                test: [\"CMD-SHELL\", \"/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P Strong!Passw0rd -Q 'SELECT 1'\"]
+                interval: 10s
+                timeout: 5s
+                retries: 5
+            cesizen_api:
+              image: cesizen-api:test
+              environment:
+                - ConnectionStrings__DefaultConnection=Server=cesizen_db,1433;Database=CESIZenDatabase;User Id=sa;Password=Strong!Passw0rd;TrustServerCertificate=true;
+              depends_on:
+                cesizen_db:
+                  condition: service_healthy
+            cesizen_ui:
+              image: cesizen-ui:test
+              environment:
+                - ConnectionStrings__DefaultConnection=Server=cesizen_db,1433;Database=CESIZenDatabase;User Id=sa;Password=Strong!Passw0rd;TrustServerCertificate=true;
+              depends_on:
+                cesizen_db:
+                  condition: service_healthy
+          EOF
+
+          # Tester que les services démarrent correctement
+          docker-compose -f docker-compose.test.yml up -d
+          sleep 30
+          docker-compose -f docker-compose.test.yml ps
+          docker-compose -f docker-compose.test.yml down

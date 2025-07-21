@@ -1,0 +1,6 @@
+services:
+  cesizen.ui:
+    image: ${DOCKER_REGISTRY-}cesizenui
+    build:
+      context: .
+      dockerfile: CESIZen.UI/Dockerfile

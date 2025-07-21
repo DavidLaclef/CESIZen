@@ -16,13 +16,6 @@ jobs:
           name: deployment-artifacts
           path: ./deployment/
 
-      - name: Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.AZURE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.AZURE_VM_HOST }} >> ~/.ssh/known_hosts
-
       - name: Copy deployment files to server
         run: |
           scp -r ./deployment/* ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}:~/cesizen/

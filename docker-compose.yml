@@ -4,3 +4,35 @@ services:
     build:
       context: .
       dockerfile: CESIZen.UI/Dockerfile
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    depends_on:
+      - sqlserver
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=CESIZenDatabase;User Id=sa;Password=Cesizen12345.;TrustServerCertificate=true;
+    networks:
+      - cesizen-network
+    restart: unless-stopped
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Cesizen12345.
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - cesizen-network
+
+volumes:
+  sqlserver_data:
+
+networks:
+  cesizen-network:
+    driver: bridge

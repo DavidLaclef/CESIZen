@@ -77,80 +77,14 @@ builder.Services.AddRazorComponents()
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        await SeedRoles.InitializeRoles(services);
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Une erreur s'est produite lors de l'initialisation des rôles.");
-    }
-}
+// Migration avec retry logic
+await MigrateDatabaseWithRetry(app);
 
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        var userManager = services.GetRequiredService<UserManager<User>>();
-        var roleManager = services.GetRequiredService<RoleManager<IdentityRole<int>>>();
-        var logger = services.GetRequiredService<ILogger<Program>>();
+// Initialisation des rôles avec retry
+await InitializeRolesWithRetry(app);
 
-        var existingUser = await userManager.FindByEmailAsync("admin@admin.com");
-
-        if (existingUser == null)
-        {
-            var testUser = new User
-            {
-                UserName = "Admin",
-                Email = "admin@admin.com",
-                Name = "Admin",
-                LastName = "Admin",
-                Pseudo = "Admin",
-                EmailConfirmed = true,
-                IsAccountActivated = true
-            };
-
-            var result = await userManager.CreateAsync(testUser, "P@ssw0rd123");
-
-            if (result.Succeeded)
-            {
-                if (!await roleManager.RoleExistsAsync("Administrateur"))
-                {
-                    await roleManager.CreateAsync(new IdentityRole<int>("Administrateur"));
-                }
-                var roleResult = await userManager.AddToRoleAsync(testUser, "Administrateur");
-            }
-
-        }
-        else
-        {
-            if (!await userManager.IsInRoleAsync(existingUser, "Administrateur"))
-            {
-                var roleResult = await userManager.AddToRoleAsync(existingUser, "Administrateur");
-
-                if (roleResult.Succeeded)
-                {
-                    logger.LogInformation("Rôle Administrateur attribué à l'utilisateur Admin existant");
-                }
-                else
-                {
-                    logger.LogWarning("Échec de l'attribution du rôle Administrateur à l'utilisateur existant: {Errors}",
-                        string.Join(", ", roleResult.Errors.Select(e => e.Description)));
-                }
-            }
-        }
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Une erreur s'est produite lors de la création/mise à jour de l'utilisateur Admin.");
-    }
-}
+// Création de l'utilisateur admin avec retry
+await CreateAdminUserWithRetry(app);
 
 if (!app.Environment.IsDevelopment())
 {
@@ -174,3 +108,175 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+// Méthode pour la migration avec retry
+static async Task MigrateDatabaseWithRetry(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<CESIZenDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    var maxRetries = 30;
+    var delay = TimeSpan.FromSeconds(2);
+
+    for (int i = 0; i < maxRetries; i++)
+    {
+        try
+        {
+            logger.LogInformation("Database migration attempt {Attempt}...", i + 1);
+            await dbContext.Database.MigrateAsync();
+            logger.LogInformation("Database migration completed successfully.");
+            return;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("Database migration attempt {Attempt} failed: {Error}", i + 1, ex.Message);
+
+            if (i == maxRetries - 1)
+            {
+                logger.LogError(ex, "All database migration attempts failed. Throwing exception.");
+                throw;
+            }
+
+            logger.LogInformation("Waiting {Delay} seconds before retry...", delay.TotalSeconds);
+            await Task.Delay(delay);
+        }
+    }
+}
+
+// Méthode pour l'initialisation des rôles avec retry
+static async Task InitializeRolesWithRetry(WebApplication app)
+{
+    var maxRetries = 5;
+    var delay = TimeSpan.FromSeconds(1);
+
+    for (int i = 0; i < maxRetries; i++)
+    {
+        try
+        {
+            using var scope = app.Services.CreateScope();
+            var services = scope.ServiceProvider;
+            var logger = services.GetRequiredService<ILogger<Program>>();
+
+            logger.LogInformation("Roles initialization attempt {Attempt}...", i + 1);
+            await SeedRoles.InitializeRoles(services);
+            logger.LogInformation("Roles initialization completed successfully.");
+            return;
+        }
+        catch (Exception ex)
+        {
+            using var scope = app.Services.CreateScope();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            logger.LogWarning("Roles initialization attempt {Attempt} failed: {Error}", i + 1, ex.Message);
+
+            if (i == maxRetries - 1)
+            {
+                logger.LogError(ex, "All roles initialization attempts failed.");
+                throw;
+            }
+
+            await Task.Delay(delay);
+        }
+    }
+}
+
+// Méthode pour la création de l'utilisateur admin avec retry
+static async Task CreateAdminUserWithRetry(WebApplication app)
+{
+    var maxRetries = 5;
+    var delay = TimeSpan.FromSeconds(1);
+
+    for (int i = 0; i < maxRetries; i++)
+    {
+        try
+        {
+            using var scope = app.Services.CreateScope();
+            var services = scope.ServiceProvider;
+            var userManager = services.GetRequiredService<UserManager<User>>();
+            var roleManager = services.GetRequiredService<RoleManager<IdentityRole<int>>>();
+            var logger = services.GetRequiredService<ILogger<Program>>();
+
+            logger.LogInformation("Admin user creation attempt {Attempt}...", i + 1);
+
+            var existingUser = await userManager.FindByEmailAsync("admin@admin.com");
+
+            if (existingUser == null)
+            {
+                var testUser = new User
+                {
+                    UserName = "Admin",
+                    Email = "admin@admin.com",
+                    Name = "Admin",
+                    LastName = "Admin",
+                    Pseudo = "Admin",
+                    EmailConfirmed = true,
+                    IsAccountActivated = true
+                };
+
+                var result = await userManager.CreateAsync(testUser, "P@ssw0rd123");
+
+                if (result.Succeeded)
+                {
+                    if (!await roleManager.RoleExistsAsync("Administrateur"))
+                    {
+                        await roleManager.CreateAsync(new IdentityRole<int>("Administrateur"));
+                    }
+                    var roleResult = await userManager.AddToRoleAsync(testUser, "Administrateur");
+
+                    if (roleResult.Succeeded)
+                    {
+                        logger.LogInformation("Admin user created and role assigned successfully.");
+                    }
+                    else
+                    {
+                        logger.LogWarning("Admin user created but role assignment failed: {Errors}",
+                            string.Join(", ", roleResult.Errors.Select(e => e.Description)));
+                    }
+                }
+                else
+                {
+                    logger.LogWarning("Admin user creation failed: {Errors}",
+                        string.Join(", ", result.Errors.Select(e => e.Description)));
+                }
+            }
+            else
+            {
+                if (!await userManager.IsInRoleAsync(existingUser, "Administrateur"))
+                {
+                    var roleResult = await userManager.AddToRoleAsync(existingUser, "Administrateur");
+
+                    if (roleResult.Succeeded)
+                    {
+                        logger.LogInformation("Rôle Administrateur attribué à l'utilisateur Admin existant");
+                    }
+                    else
+                    {
+                        logger.LogWarning("Échec de l'attribution du rôle Administrateur à l'utilisateur existant: {Errors}",
+                            string.Join(", ", roleResult.Errors.Select(e => e.Description)));
+                    }
+                }
+                else
+                {
+                    logger.LogInformation("Admin user already exists with correct role.");
+                }
+            }
+
+            logger.LogInformation("Admin user setup completed successfully.");
+            return;
+        }
+        catch (Exception ex)
+        {
+            using var scope = app.Services.CreateScope();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            logger.LogWarning("Admin user creation attempt {Attempt} failed: {Error}", i + 1, ex.Message);
+
+            if (i == maxRetries - 1)
+            {
+                logger.LogError(ex, "All admin user creation attempts failed.");
+                throw;
+            }
+
+            await Task.Delay(delay);
+        }
+    }
+}

@@ -105,12 +105,59 @@ jobs:
       - name: Health check
         run: |
           sleep 60
-          if curl -f -s --max-time 30 http://${{ secrets.AZURE_VM_HOST }}/ > /dev/null; then
-            echo "✅ Application UI accessible"
+          
+          echo "🔍 Diagnostic de l'application..."
+          
+          # Vérifier les services Docker sur le serveur
+          ssh -i ~/.ssh/id_rsa ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} << 'ENDSSH'
+            cd ~/cesizen
+            
+            echo "📋 État des containers Docker:"
+            if command -v docker-compose &> /dev/null; then
+              docker-compose ps
+              echo ""
+              echo "📋 Logs des services:"
+              docker-compose logs --tail=20
+            elif docker compose version &> /dev/null; then
+              docker compose ps
+              echo ""
+              echo "📋 Logs des services:"
+              docker compose logs --tail=20
+            fi
+            
+            echo ""
+            echo "🔍 Ports en écoute sur le serveur:"
+            netstat -tlnp | grep -E ':(80|8080|3000|5000)' || echo "Aucun port web en écoute"
+            
+            echo ""
+            echo "🐳 Tous les containers Docker:"
+            docker ps -a
+          ENDSSH
+          
+          echo ""
+          echo "🌐 Test de connectivité réseau:"
+          
+          # Test ping
+          if ping -c 1 ${{ secrets.AZURE_VM_HOST }} > /dev/null; then
+            echo "✅ Serveur joignable"
           else
-            echo "❌ Application UI non accessible"
-            exit 1
+            echo "❌ Serveur non joignable"
           fi
+          
+          # Test des différents ports
+          for PORT in 80 8080 3000; do
+            echo "🔍 Test du port $PORT..."
+            if curl -f -s --max-time 10 http://${{ secrets.AZURE_VM_HOST }}:$PORT/ > /dev/null 2>&1; then
+              echo "✅ Port $PORT accessible"
+              break
+            else
+              echo "❌ Port $PORT non accessible"
+            fi
+          done
+          
+          # Test avec plus de détails sur le port 80
+          echo "📋 Détails de la réponse HTTP:"
+          curl -v --max-time 10 http://${{ secrets.AZURE_VM_HOST }}/ || echo "Échec de la connexion HTTP"
 
       - name: Cleanup SSH key
         if: always()

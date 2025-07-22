@@ -1,6 +1,11 @@
 name: 02-2 - Deploy to Azure VM
 on:
   workflow_call
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
   deploy:
     name: Deploy to Production
@@ -38,27 +43,65 @@ jobs:
           ssh -i ~/.ssh/id_rsa ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} << 'ENDSSH'
             cd ~/cesizen
             
+            # Afficher les informations de débogage
+            echo "🔍 Variables d'environnement:"
+            echo "REGISTRY: ${{ env.REGISTRY }}"
+            echo "IMAGE_NAME: ${{ env.IMAGE_NAME }}"
+            
             # Configurer les variables d'environnement
             export SQL_SERVER_PASSWORD="${{ secrets.SQL_SERVER_PASSWORD }}"
             
             # Se connecter au registre Docker
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
+            # Déterminer la commande docker compose disponible
+            if command -v docker-compose &> /dev/null; then
+              DOCKER_COMPOSE="docker-compose"
+            elif docker compose version &> /dev/null; then
+              DOCKER_COMPOSE="docker compose"
+            else
+              echo "❌ Ni docker-compose ni docker compose n'est disponible"
+              echo "Installation de docker-compose..."
+              sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+              DOCKER_COMPOSE="docker-compose"
+            fi
+            echo "✅ Utilisation de: $DOCKER_COMPOSE"
+            
             # Mettre à jour le fichier docker-compose avec les bonnes images
+            echo "🔄 Mise à jour des images dans docker-compose.yml"
             sed -i 's|ghcr.io/votre-username/cesizen-api:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:latest|g' docker-compose.yml
             sed -i 's|ghcr.io/votre-username/cesizen-ui:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-ui:latest|g' docker-compose.yml
+            
+            # Vérifier le contenu du fichier docker-compose
+            echo "📄 Contenu du docker-compose.yml (lignes avec images):"
+            grep "image:" docker-compose.yml || echo "Aucune ligne 'image:' trouvée"
+            
+            # Modifier le script deploy.sh pour utiliser la bonne commande
+            if [ -f "deploy.sh" ]; then
+              sed -i "s/docker-compose/\$DOCKER_COMPOSE/g" deploy.sh
+              echo "✅ Script deploy.sh mis à jour"
+            else
+              echo "⚠️ Fichier deploy.sh non trouvé"
+            fi
             
             # Exécuter le script de déploiement
             chmod +x deploy.sh
             ./deploy.sh
             
             # Vérifier que les services sont démarrés
-            docker-compose ps
+            echo "🔍 État des services:"
+            $DOCKER_COMPOSE ps
+            
+            # Compter les services en cours d'exécution
+            RUNNING_SERVICES=$($DOCKER_COMPOSE ps --filter "status=running" -q | wc -l)
+            echo "Services en cours d'exécution: $RUNNING_SERVICES"
             
             # Afficher les logs en cas de problème
-            if [ "$(docker-compose ps | grep -c 'Up')" -lt 3 ]; then
+            if [ "$RUNNING_SERVICES" -lt 3 ]; then
               echo "❌ Certains services ne sont pas démarrés correctement"
-              docker-compose logs
+              echo "📋 Logs des services:"
+              $DOCKER_COMPOSE logs --tail=50
               exit 1
             else
               echo "✅ Tous les services sont opérationnels"

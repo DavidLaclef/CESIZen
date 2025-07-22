@@ -1,14 +1,11 @@
 name: 02-2 - Deploy to Azure VM
-
 on:
   workflow_call
-
 jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
     environment: production
-
     steps:
       - name: Download deployment artifacts
         uses: actions/download-artifact@v4
@@ -16,32 +13,48 @@ jobs:
           name: deployment-artifacts
           path: ./deployment/
 
+      - name: Setup SSH key and known hosts
+        run: |
+          # Créer le répertoire SSH
+          mkdir -p ~/.ssh
+          
+          # Ajouter la clé privée
+          echo "${{ secrets.AZURE_VM_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+          # Ajouter l'host dans known_hosts pour éviter la vérification
+          ssh-keyscan -H ${{ secrets.AZURE_VM_HOST }} >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          
+          # Vérifier la connexion SSH
+          ssh -o ConnectTimeout=10 -i ~/.ssh/id_rsa ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} "echo 'SSH connection successful'"
+
       - name: Copy deployment files to server
         run: |
-          scp -r ./deployment/* ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}:~/cesizen/
+          scp -i ~/.ssh/id_rsa -r ./deployment/* ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}:~/cesizen/
 
       - name: Deploy application
         run: |
-          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} << 'ENDSSH'
+          ssh -i ~/.ssh/id_rsa ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} << 'ENDSSH'
             cd ~/cesizen
-
+            
             # Configurer les variables d'environnement
             export SQL_SERVER_PASSWORD="${{ secrets.SQL_SERVER_PASSWORD }}"
-
+            
             # Se connecter au registre Docker
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
+            
             # Mettre à jour le fichier docker-compose avec les bonnes images
             sed -i 's|ghcr.io/votre-username/cesizen-api:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:latest|g' docker-compose.yml
             sed -i 's|ghcr.io/votre-username/cesizen-ui:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-ui:latest|g' docker-compose.yml
-
+            
             # Exécuter le script de déploiement
             chmod +x deploy.sh
             ./deploy.sh
-
+            
             # Vérifier que les services sont démarrés
             docker-compose ps
-
+            
             # Afficher les logs en cas de problème
             if [ "$(docker-compose ps | grep -c 'Up')" -lt 3 ]; then
               echo "❌ Certains services ne sont pas démarrés correctement"
@@ -56,21 +69,27 @@ jobs:
         run: |
           # Attendre un peu que les services soient complètement prêts
           sleep 60
-
-          # Test de santé de l'application
+          
+          # Test de santé de l'application UI
           if curl -f -s --max-time 30 http://${{ secrets.AZURE_VM_HOST }}/ > /dev/null; then
             echo "✅ Application UI accessible"
           else
             echo "❌ Application UI non accessible"
             exit 1
           fi
-
+          
+          # Test de santé de l'API
           if curl -f -s --max-time 30 http://${{ secrets.AZURE_VM_HOST }}:5000/swagger > /dev/null; then
             echo "✅ API accessible"
           else
             echo "❌ API non accessible"
             exit 1
           fi
+
+      - name: Cleanup SSH key
+        if: always()
+        run: |
+          rm -f ~/.ssh/id_rsa
 
       - name: Notify deployment success
         if: success()

@@ -79,14 +79,24 @@ jobs:
           file: CESIZen.UI/Dockerfile
           push: false
           tags: cesizen-ui:test
+          load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Verify Docker image
+        run: |
+          echo "Listing available Docker images:"
+          docker images
+          echo "Checking if our image exists:"
+          docker images cesizen-ui:test
+
       - name: Test Docker Compose
         run: |
+          # Vérifier la disponibilité de docker compose
+          docker compose version
+          
           # Créer un fichier docker-compose de test
           cat > docker-compose.test.yml << 'EOF'
-          version: '3.8'
           services:
             cesizen_db:
               image: mcr.microsoft.com/mssql/server:2022-latest

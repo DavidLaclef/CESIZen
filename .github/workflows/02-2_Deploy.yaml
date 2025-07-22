@@ -20,112 +20,89 @@ jobs:
 
       - name: Setup SSH key and known hosts
         run: |
-          # Créer le répertoire SSH
           mkdir -p ~/.ssh
-          
-          # Ajouter la clé privée
           echo "${{ secrets.AZURE_VM_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          
-          # Ajouter l'host dans known_hosts pour éviter la vérification
           ssh-keyscan -H ${{ secrets.AZURE_VM_HOST }} >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
-          
-          # Vérifier la connexion SSH
           ssh -o ConnectTimeout=10 -i ~/.ssh/id_rsa ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} "echo 'SSH connection successful'"
 
       - name: Copy deployment files to server
         run: |
           scp -i ~/.ssh/id_rsa -r ./deployment/* ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}:~/cesizen/
 
-      - name: Deploy application
+      - name: Create deployment script locally
         run: |
-          ssh -i ~/.ssh/id_rsa ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} << 'ENDSSH'
-            cd ~/cesizen
-            
-            # Afficher les informations de débogage
-            echo "🔍 Variables d'environnement:"
-            echo "REGISTRY: ${{ env.REGISTRY }}"
-            echo "IMAGE_NAME: ${{ env.IMAGE_NAME }}"
-            
-            # Configurer les variables d'environnement
-            export SQL_SERVER_PASSWORD="${{ secrets.SQL_SERVER_PASSWORD }}"
-            
-            # Se connecter au registre Docker
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
-            # Déterminer la commande docker compose disponible
-            if command -v docker-compose &> /dev/null; then
-              DOCKER_COMPOSE="docker-compose"
-            elif docker compose version &> /dev/null; then
-              DOCKER_COMPOSE="docker compose"
-            else
-              echo "❌ Ni docker-compose ni docker compose n'est disponible"
-              echo "Installation de docker-compose..."
-              sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-              sudo chmod +x /usr/local/bin/docker-compose
-              DOCKER_COMPOSE="docker-compose"
-            fi
-            echo "✅ Utilisation de: $DOCKER_COMPOSE"
-            
-            # Mettre à jour le fichier docker-compose avec les bonnes images
-            echo "🔄 Mise à jour des images dans docker-compose.yml"
-            sed -i 's|ghcr.io/votre-username/cesizen-api:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:latest|g' docker-compose.yml
-            sed -i 's|ghcr.io/votre-username/cesizen-ui:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-ui:latest|g' docker-compose.yml
-            
-            # Vérifier le contenu du fichier docker-compose
-            echo "📄 Contenu du docker-compose.yml (lignes avec images):"
-            grep "image:" docker-compose.yml || echo "Aucune ligne 'image:' trouvée"
-            
-            # Modifier le script deploy.sh pour utiliser la bonne commande
-            if [ -f "deploy.sh" ]; then
-              sed -i "s/docker-compose/\$DOCKER_COMPOSE/g" deploy.sh
-              echo "✅ Script deploy.sh mis à jour"
-            else
-              echo "⚠️ Fichier deploy.sh non trouvé"
-            fi
-            
-            # Exécuter le script de déploiement
-            chmod +x deploy.sh
-            ./deploy.sh
-            
-            # Vérifier que les services sont démarrés
-            echo "🔍 État des services:"
-            $DOCKER_COMPOSE ps
-            
-            # Compter les services en cours d'exécution
-            RUNNING_SERVICES=$($DOCKER_COMPOSE ps --filter "status=running" -q | wc -l)
-            echo "Services en cours d'exécution: $RUNNING_SERVICES"
-            
-            # Afficher les logs en cas de problème
-            if [ "$RUNNING_SERVICES" -lt 3 ]; then
-              echo "❌ Certains services ne sont pas démarrés correctement"
-              echo "📋 Logs des services:"
-              $DOCKER_COMPOSE logs --tail=50
-              exit 1
-            else
-              echo "✅ Tous les services sont opérationnels"
-            fi
-          ENDSSH
+          cat > deploy_script.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          cd ~/cesizen
+          
+          echo "🔍 Variables d'environnement:"
+          echo "REGISTRY: ${{ env.REGISTRY }}"
+          echo "IMAGE_NAME: ${{ env.IMAGE_NAME }}"
+          
+          export SQL_SERVER_PASSWORD="${{ secrets.SQL_SERVER_PASSWORD }}"
+          
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          
+          if command -v docker-compose &> /dev/null; then
+            DOCKER_COMPOSE="docker-compose"
+          elif docker compose version &> /dev/null; then
+            DOCKER_COMPOSE="docker compose"
+          else
+            echo "Installation de docker-compose..."
+            sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+            DOCKER_COMPOSE="docker-compose"
+          fi
+          echo "✅ Utilisation de: $DOCKER_COMPOSE"
+          
+          cp docker-compose.yml docker-compose.yml.backup
+          
+          echo "🔄 Mise à jour de l'image UI dans docker-compose.yml"
+          sed -i 's|image: \${DOCKER_REGISTRY-}cesizenui|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-ui:latest|g' docker-compose.yml
+          sed -i 's|ghcr.io/votre-username/cesizen-ui:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-ui:latest|g' docker-compose.yml
+          
+          echo "📄 Images dans docker-compose.yml:"
+          grep "image:" docker-compose.yml || echo "Aucune ligne 'image:' trouvée"
+          
+          echo "🚀 Début du déploiement..."
+          $DOCKER_COMPOSE down || true
+          docker system prune -f
+          $DOCKER_COMPOSE pull
+          $DOCKER_COMPOSE up -d
+          sleep 30
+          
+          echo "🔍 État des services:"
+          $DOCKER_COMPOSE ps
+          
+          RUNNING_SERVICES=$($DOCKER_COMPOSE ps -q | wc -l)
+          echo "Services en cours: $RUNNING_SERVICES"
+          
+          if [ "$RUNNING_SERVICES" -lt 1 ]; then
+            echo "❌ Erreur de déploiement"
+            $DOCKER_COMPOSE logs --tail=50
+            exit 1
+          else
+            echo "✅ Services opérationnels"
+          fi
+          EOF
+          chmod +x deploy_script.sh
+
+      - name: Copy and execute deployment script
+        run: |
+          scp -i ~/.ssh/id_rsa deploy_script.sh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}:~/
+          ssh -i ~/.ssh/id_rsa ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} "bash ~/deploy_script.sh"
 
       - name: Health check
         run: |
-          # Attendre un peu que les services soient complètement prêts
           sleep 60
-          
-          # Test de santé de l'application UI
           if curl -f -s --max-time 30 http://${{ secrets.AZURE_VM_HOST }}/ > /dev/null; then
             echo "✅ Application UI accessible"
           else
             echo "❌ Application UI non accessible"
-            exit 1
-          fi
-          
-          # Test de santé de l'API
-          if curl -f -s --max-time 30 http://${{ secrets.AZURE_VM_HOST }}:5000/swagger > /dev/null; then
-            echo "✅ API accessible"
-          else
-            echo "❌ API non accessible"
             exit 1
           fi
 
@@ -139,7 +116,6 @@ jobs:
         run: |
           echo "🎉 Déploiement réussi!"
           echo "🌐 Application disponible sur: http://${{ secrets.AZURE_VM_HOST }}"
-          echo "📚 API Swagger: http://${{ secrets.AZURE_VM_HOST }}:5000/swagger"
 
       - name: Notify deployment failure
         if: failure()

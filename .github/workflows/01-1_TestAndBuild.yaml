@@ -117,13 +117,13 @@ jobs:
 
           # Tester que les services démarrent correctement
           echo "Starting services..."
-          docker-compose -f docker-compose.test.yml up -d
+          docker compose -f docker-compose.test.yml up -d
           
           echo "Waiting for services to be ready..."
           sleep 60
           
           echo "Checking services status..."
-          docker-compose -f docker-compose.test.yml ps
+          docker compose -f docker-compose.test.yml ps
           
           echo "Checking if UI is responsive..."
           for i in {1..30}; do
@@ -136,7 +136,7 @@ jobs:
           done
           
           echo "Showing container logs..."
-          docker-compose -f docker-compose.test.yml logs
+          docker compose -f docker-compose.test.yml logs
           
           echo "Stopping services..."
-          docker-compose -f docker-compose.test.yml down
+          docker compose -f docker-compose.test.yml down

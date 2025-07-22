@@ -4,7 +4,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.repository_owner }}/cesizen
 
 jobs:
   deploy:
@@ -33,7 +33,10 @@ jobs:
 
       - name: Create deployment script locally
         run: |
-          cat > deploy_script.sh << 'EOF'
+          # Convertir le nom du repository en minuscules
+          IMAGE_NAME_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          
+          cat > deploy_script.sh << EOF
           #!/bin/bash
           set -e
           
@@ -41,7 +44,7 @@ jobs:
           
           echo "🔍 Variables d'environnement:"
           echo "REGISTRY: ${{ env.REGISTRY }}"
-          echo "IMAGE_NAME: ${{ env.IMAGE_NAME }}"
+          echo "IMAGE_NAME: \$IMAGE_NAME_LOWER"
           
           export SQL_SERVER_PASSWORD="${{ secrets.SQL_SERVER_PASSWORD }}"
           
@@ -53,42 +56,45 @@ jobs:
             DOCKER_COMPOSE="docker compose"
           else
             echo "Installation de docker-compose..."
-            sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-\$(uname -s)-\$(uname -m)" -o /usr/local/bin/docker-compose
             sudo chmod +x /usr/local/bin/docker-compose
             DOCKER_COMPOSE="docker-compose"
           fi
-          echo "✅ Utilisation de: $DOCKER_COMPOSE"
+          echo "✅ Utilisation de: \$DOCKER_COMPOSE"
           
           cp docker-compose.yml docker-compose.yml.backup
           
           echo "🔄 Mise à jour de l'image UI dans docker-compose.yml"
-          sed -i 's|image: \${DOCKER_REGISTRY-}cesizenui|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-ui:latest|g' docker-compose.yml
-          sed -i 's|ghcr.io/votre-username/cesizen-ui:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-ui:latest|g' docker-compose.yml
+          sed -i 's|image: \\\${DOCKER_REGISTRY-}cesizenui|image: ${{ env.REGISTRY }}/\$IMAGE_NAME_LOWER-ui:latest|g' docker-compose.yml
+          sed -i 's|ghcr.io/votre-username/cesizen-ui:latest|${{ env.REGISTRY }}/\$IMAGE_NAME_LOWER-ui:latest|g' docker-compose.yml
           
           echo "📄 Images dans docker-compose.yml:"
           grep "image:" docker-compose.yml || echo "Aucune ligne 'image:' trouvée"
           
           echo "🚀 Début du déploiement..."
-          $DOCKER_COMPOSE down || true
+          \$DOCKER_COMPOSE down || true
           docker system prune -f
-          $DOCKER_COMPOSE pull
-          $DOCKER_COMPOSE up -d
+          \$DOCKER_COMPOSE pull
+          \$DOCKER_COMPOSE up -d
           sleep 30
           
           echo "🔍 État des services:"
-          $DOCKER_COMPOSE ps
+          \$DOCKER_COMPOSE ps
           
-          RUNNING_SERVICES=$($DOCKER_COMPOSE ps -q | wc -l)
-          echo "Services en cours: $RUNNING_SERVICES"
+          RUNNING_SERVICES=\$(\$DOCKER_COMPOSE ps -q | wc -l)
+          echo "Services en cours: \$RUNNING_SERVICES"
           
-          if [ "$RUNNING_SERVICES" -lt 1 ]; then
+          if [ "\$RUNNING_SERVICES" -lt 1 ]; then
             echo "❌ Erreur de déploiement"
-            $DOCKER_COMPOSE logs --tail=50
+            \$DOCKER_COMPOSE logs --tail=50
             exit 1
           else
             echo "✅ Services opérationnels"
           fi
           EOF
+          
+          # Substituer la variable dans le script
+          sed -i "s|\$IMAGE_NAME_LOWER|$IMAGE_NAME_LOWER|g" deploy_script.sh
           chmod +x deploy_script.sh
 
       - name: Copy and execute deployment script

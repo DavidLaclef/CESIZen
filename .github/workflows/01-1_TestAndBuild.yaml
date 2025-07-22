@@ -37,10 +37,10 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore CESIZen.UI/CESIZen.UI.csproj
 
       - name: Build UI
-        run: dotnet build CESIZen.UI --no-restore --configuration Release
+        run: dotnet build CESIZen.UI/CESIZen.UI.csproj --no-restore --configuration Release
 
       # Attendre que SQL Server soit prêt
       - name: Wait for SQL Server
@@ -56,7 +56,7 @@ jobs:
           done
 
       - name: Test UI build
-        run: dotnet build CESIZen.UI --configuration Release --verbosity normal
+        run: dotnet build CESIZen.UI/CESIZen.UI.csproj --configuration Release --verbosity normal
         env:
           ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=CESIZenTestDb;User Id=sa;Password=Strong!Passw0rd123;TrustServerCertificate=true;"
 

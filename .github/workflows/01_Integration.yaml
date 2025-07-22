@@ -32,10 +32,10 @@ jobs:
                   dotnet-version: '8.0.x'
 
             - name: Restore dependencies
-              run: dotnet restore
+              run: dotnet restore CESIZen.UI/CESIZen.UI.csproj
 
             - name: Build
-              run: dotnet build --no-restore --configuration Release
+              run: dotnet build CESIZen.UI/CESIZen.UI.csproj --no-restore --configuration Release
 
             # Commenter temporairement les tests avec couverture
             # - name: Run tests with coverage

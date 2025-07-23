@@ -29,6 +29,7 @@ services:
       - sqlserver_data:/var/opt/mssql
     networks:
       - cesizen-network
+    restart: unless-stopped
 
 volumes:
   sqlserver_data:

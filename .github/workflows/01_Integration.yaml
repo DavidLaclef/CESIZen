@@ -4,6 +4,10 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - develop
+      - main
 
 jobs:
   test-and-build:
@@ -28,39 +32,42 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore CESIZen.UI/CESIZen.UI.csproj
+        run: |
+          dotnet restore CESIZen.UI/CESIZen.UI.csproj
+          dotnet restore CESIZen.Tests/CESIZen.Tests.csproj
 
       - name: Build
-        run: dotnet build CESIZen.UI/CESIZen.UI.csproj --no-restore --configuration Release
+        run: |
+          dotnet build CESIZen.UI/CESIZen.UI.csproj --no-restore --configuration Release
+          dotnet build CESIZen.Tests/CESIZen.Tests.csproj --no-restore --configuration Release
 
-      # Commenter temporairement les tests avec couverture
-      # - name: Run tests with coverage
-      #   run: |
-      #     dotnet test --no-build --configuration Release \
-      #       --collect:"XPlat Code Coverage" \
-      #       --results-directory ./TestResults/ \
-      #       --logger trx \
-      #       --verbosity normal
+      # NOUVEAU: Tests avec couverture de code
+      - name: Run tests with coverage
+        run: |
+          dotnet test CESIZen.Tests/CESIZen.Tests.csproj \
+            --configuration Release \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./TestResults/ \
+            --logger trx \
+            --verbosity normal
+        env:
+          ASPNETCORE_ENVIRONMENT: Testing
 
-      # - name: Install dotnet-coverage
-      #   run: dotnet tool install -g dotnet-coverage
+      - name: Install dotnet-coverage
+        run: dotnet tool install -g dotnet-coverage
 
-      # - name: Generate coverage report
-      #   run: |
-      #     dotnet-coverage merge ./TestResults/**/*.coverage -o ./TestResults/coverage.cobertura.xml -f cobertura
+      - name: Generate coverage report
+        run: |
+          dotnet-coverage merge ./TestResults/**/*.coverage -o ./TestResults/coverage.cobertura.xml -f cobertura
 
-      # Commenter SonarCloud temporairement
-      # - name: SonarCloud Scan
-      #   uses: SonarSource/sonarcloud-github-action@master
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      #   with:
-      #     args: >
-      #       -Dsonar.projectKey=cesizen
-      #       -Dsonar.organization=votre-organization
-      #       -Dsonar.cs.dotcover.reportsPaths=./TestResults/coverage.cobertura.xml
-      #       -Dsonar.coverage.exclusions=**/*.razor,**/*.cshtml,**/Program.cs,**/Startup.cs
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            ./TestResults/coverage.cobertura.xml
+            ./TestResults/**/*.trx
+          retention-days: 30
 
   sonarqube-analysis:
     name: SonarQube Analysis
@@ -101,13 +108,34 @@ jobs:
           New-Item -Path .\.sonar\scanner -ItemType Directory
           dotnet tool update dotnet-sonarscanner --tool-path .\.sonar\scanner
 
+      # NOUVEAU: Tests pour SonarQube
+      - name: Run tests for SonarQube
+        shell: powershell
+        run: |
+          dotnet test CESIZen.Tests\CESIZen.Tests.csproj `
+            --configuration Release `
+            --collect:"XPlat Code Coverage" `
+            --results-directory .\TestResults `
+            --logger trx `
+            --verbosity normal
+        env:
+          ASPNETCORE_ENVIRONMENT: Testing
+
       - name: Build and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         shell: powershell
         run: |
-          .\.sonar\scanner\dotnet-sonarscanner begin /k:"DavidLaclef_CESIZen" /o:"davidlaclef" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
-          dotnet build CESIZen.sln
+          .\.sonar\scanner\dotnet-sonarscanner begin `
+            /k:"DavidLaclef_CESIZen" `
+            /o:"davidlaclef" `
+            /d:sonar.token="${{ secrets.SONAR_TOKEN }}" `
+            /d:sonar.host.url="https://sonarcloud.io" `
+            /d:sonar.cs.dotcover.reportsPaths=".\TestResults\**\*.coverage" `
+            /d:sonar.coverage.exclusions="**\*.razor,**\*.cshtml,**\Program.cs,**\Startup.cs,**\Migrations\**"
+          
+          dotnet build CESIZen.sln --configuration Release
+          
           .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
 
   security-scan:
@@ -132,3 +160,60 @@ jobs:
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
+
+  # NOUVEAU: Job de résumé des tests
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [test-and-build, code-quality]
+    if: always()
+
+    steps:
+      - name: Download test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results
+          path: ./test-results
+        continue-on-error: true
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-reports
+          path: ./coverage-reports
+        continue-on-error: true
+
+      - name: Generate Test Summary
+        run: |
+          echo "# 📊 Résumé des Tests CESIZen" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎯 Status des Jobs" >> $GITHUB_STEP_SUMMARY
+          echo "- Test & Build: ${{ needs.test-and-build.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Code Quality: ${{ needs.code-quality.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Vérifier les fichiers de test
+          if [ -d "./test-results" ]; then
+            echo "## ✅ Résultats des Tests" >> $GITHUB_STEP_SUMMARY
+            UNIT_COUNT=$(find ./test-results -name "*unit*" -type f | wc -l)
+            INTEGRATION_COUNT=$(find ./test-results -name "*integration*" -type f | wc -l)
+            DATABASE_COUNT=$(find ./test-results -name "*database*" -type f | wc -l)
+            
+            echo "- Tests unitaires: $UNIT_COUNT fichier(s)" >> $GITHUB_STEP_SUMMARY
+            echo "- Tests d'intégration: $INTEGRATION_COUNT fichier(s)" >> $GITHUB_STEP_SUMMARY
+            echo "- Tests de base de données: $DATABASE_COUNT fichier(s)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ⚠️ Aucun résultat de test trouvé" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Vérifier la couverture
+          if [ -d "./coverage-reports" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## 📈 Couverture de Code" >> $GITHUB_STEP_SUMMARY
+            echo "- Rapport de couverture généré ✅" >> $GITHUB_STEP_SUMMARY
+            echo "- Voir SonarQube pour les détails complets" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [Voir les détails dans SonarCloud](https://sonarcloud.io/project/overview?id=DavidLaclef_CESIZen)" >> $GITHUB_STEP_SUMMARY

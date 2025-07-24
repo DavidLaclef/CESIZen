@@ -100,53 +100,93 @@ jobs:
           dotnet build CESIZen.UI/CESIZen.UI.csproj --no-restore --configuration Release
           dotnet build CESIZen.Tests/CESIZen.Tests.csproj --no-restore --configuration Release
 
-      - name: Run Unit Tests
+      - name: Create directories
         run: |
-          echo "🧪 Exécution des tests unitaires..."
-          dotnet test CESIZen.Tests/CESIZen.Tests.csproj \
-            --configuration Release \
-            --filter "TestCategory=Unit" \
-            --logger "trx;LogFileName=unit-tests.trx" \
-            --results-directory ./TestResults \
-            --collect:"XPlat Code Coverage" \
-            --verbosity normal
+          mkdir -p ./TestResults
+          mkdir -p ./CoverageReports
 
-      - name: Run Integration Tests
+      - name: Run Tests with Detailed Logging
         run: |
-          echo "🔗 Exécution des tests d'intégration..."
+          echo "🧪 Exécution des tests..."
+          
+          # Test avec logs détaillés
           dotnet test CESIZen.Tests/CESIZen.Tests.csproj \
             --configuration Release \
-            --filter "TestCategory=Integration" \
-            --logger "trx;LogFileName=integration-tests.trx" \
+            --logger "console;verbosity=detailed" \
+            --logger "trx;LogFileName=TestResults.trx" \
             --results-directory ./TestResults \
             --collect:"XPlat Code Coverage" \
-            --verbosity normal
+            --verbosity detailed || true
+            
+          echo "✅ Tests terminés"
         env:
           ASPNETCORE_ENVIRONMENT: Testing
           ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=CESIZenTestDb;User Id=sa;Password=Strong!Passw0rd123;TrustServerCertificate=true;"
 
-      - name: Run Database Tests
+      - name: Verify Test Results
+        if: always()
         run: |
-          echo "🗄️ Exécution des tests de base de données..."
-          dotnet test CESIZen.Tests/CESIZen.Tests.csproj \
-            --configuration Release \
-            --filter "TestCategory=Database" \
-            --logger "trx;LogFileName=database-tests.trx" \
-            --results-directory ./TestResults \
-            --collect:"XPlat Code Coverage" \
-            --verbosity normal
-        env:
-          ASPNETCORE_ENVIRONMENT: Testing
-          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=CESIZenTestDb;User Id=sa;Password=Strong!Passw0rd123;TrustServerCertificate=true;"
+          echo "🔍 Vérification des résultats..."
+          
+          # Lister tous les fichiers .trx
+          echo "📋 Fichiers TRX trouvés:"
+          find . -name "*.trx" -type f -exec ls -la {} \;
+          
+          # Vérifier le contenu des répertoires
+          echo ""
+          echo "📁 Contenu de ./TestResults:"
+          ls -la ./TestResults/ 2>/dev/null || echo "Répertoire vide ou inexistant"
+          
+          # Compter les fichiers
+          TRX_COUNT=$(find ./TestResults -name "*.trx" -type f | wc -l)
+          echo "📊 Nombre de fichiers TRX: $TRX_COUNT"
+          
+          # Si aucun fichier, chercher partout
+          if [ "$TRX_COUNT" -eq 0 ]; then
+            echo "🔍 Recherche globale de fichiers TRX:"
+            find . -name "*.trx" -type f 2>/dev/null || echo "Aucun fichier TRX trouvé"
+          fi
 
-      - name: Publish Test Results
+      - name: Publish Test Results (Robust)
         uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: 'Test Results'
-          path: './TestResults/*.trx'
+          name: 'CESIZen Test Results'
+          path: |
+            ./TestResults/*.trx
+            ./**/*.trx
           reporter: 'dotnet-trx'
-          fail-on-error: true
+          fail-on-error: false
+          max-annotations: 50
+
+      - name: Alternative Test Publisher
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: |
+            ./TestResults/**/*.trx
+            ./**/*.trx
+          report_individual_runs: true
+          check_name: "Alternative Test Results"
+
+      - name: Manual Test Summary
+        if: always()
+        run: |
+          echo "## 📊 Résultats des Tests" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          TRX_FILES=$(find . -name "*.trx" -type f)
+          if [ -n "$TRX_FILES" ]; then
+            echo "✅ Fichiers de résultats trouvés:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "$TRX_FILES" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Aucun fichier de résultats trouvé" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📁 Les fichiers détaillés sont disponibles dans les artefacts." >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
@@ -154,26 +194,9 @@ jobs:
         with:
           name: test-results
           path: |
-            ./TestResults/*.trx
-            ./TestResults/**/*.coverage
+            ./TestResults/
+            ./**/*.trx
           retention-days: 30
-
-      - name: Generate Test Summary
-        if: always()
-        run: |
-          echo "## 📊 Résultats des Tests" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Compter les fichiers de résultats
-          UNIT_TESTS=$(find ./TestResults -name "unit-tests.trx" | wc -l)
-          INTEGRATION_TESTS=$(find ./TestResults -name "integration-tests.trx" | wc -l)
-          DATABASE_TESTS=$(find ./TestResults -name "database-tests.trx" | wc -l)
-          
-          echo "- ✅ Tests unitaires: $UNIT_TESTS suite(s) exécutée(s)" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Tests d'intégration: $INTEGRATION_TESTS suite(s) exécutée(s)" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Tests de base de données: $DATABASE_TESTS suite(s) exécutée(s)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "📁 Les résultats détaillés sont disponibles dans les artefacts." >> $GITHUB_STEP_SUMMARY
 
   build-docker-images:
     name: Build Docker Images

@@ -3,7 +3,8 @@ name: 02 - Deployment
 on:
   push:
     branches:
-      - main
+      # - main
+      - nothing
   workflow_dispatch:
     inputs:
       environment:

@@ -77,14 +77,13 @@ builder.Services.AddRazorComponents()
 
 var app = builder.Build();
 
-// Migration avec retry logic
-await MigrateDatabaseWithRetry(app);
-
-// Initialisation des rôles avec retry
-await InitializeRolesWithRetry(app);
-
-// Création de l'utilisateur admin avec retry
-await CreateAdminUserWithRetry(app);
+// Migration avec retry logic - SEULEMENT en production ou développement
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    await MigrateDatabaseWithRetry(app);
+    await InitializeRolesWithRetry(app);
+    await CreateAdminUserWithRetry(app);
+}
 
 if (!app.Environment.IsDevelopment())
 {
@@ -124,8 +123,19 @@ static async Task MigrateDatabaseWithRetry(WebApplication app)
         try
         {
             logger.LogInformation("Database migration attempt {Attempt}...", i + 1);
-            await dbContext.Database.MigrateAsync();
-            logger.LogInformation("Database migration completed successfully.");
+
+            // Vérifier si c'est une base de données relationnelle
+            if (dbContext.Database.IsRelational())
+            {
+                await dbContext.Database.MigrateAsync();
+                logger.LogInformation("Database migration completed successfully.");
+            }
+            else
+            {
+                // Pour InMemory ou autres providers non-relationnels
+                await dbContext.Database.EnsureCreatedAsync();
+                logger.LogInformation("Database creation completed successfully.");
+            }
             return;
         }
         catch (Exception ex)

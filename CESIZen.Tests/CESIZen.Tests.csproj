@@ -7,17 +7,20 @@
 		<Nullable>enable</Nullable>
 		<IsPackable>false</IsPackable>
 		<IsTestProject>true</IsTestProject>
-		<EnableMSTestRunner>true</EnableMSTestRunner>
-		<OutputType>Exe</OutputType>
-		<TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
-		<TestingPlatformShowTestsFailure>true</TestingPlatformShowTestsFailure>
+
+		<!-- Désactiver la nouvelle Testing Platform pour éviter les conflits -->
+		<EnableMSTestRunner>false</EnableMSTestRunner>
+		<TestingPlatformDotnetTestSupport>false</TestingPlatformDotnetTestSupport>
+		<TestingPlatformShowTestsFailure>false</TestingPlatformShowTestsFailure>
+
+		<!-- Configuration pour la génération des résultats -->
+		<VSTestResultsDirectory>$(MSBuildProjectDirectory)/TestResults</VSTestResultsDirectory>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="FluentAssertions" Version="8.5.0" />
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
 		<PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="17.12.6" />
-		<PackageReference Include="Microsoft.Testing.Extensions.TrxReport" Version="1.4.3" />
 		<PackageReference Include="MSTest" Version="3.6.4" />
 		<PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.15" />

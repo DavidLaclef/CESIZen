@@ -37,7 +37,6 @@ jobs:
           dotnet build CESIZen.UI/CESIZen.UI.csproj --no-restore --configuration Release
           dotnet build CESIZen.Tests/CESIZen.Tests.csproj --no-restore --configuration Release
 
-      # NOUVEAU: Tests avec couverture de code
       - name: Run tests with coverage
         run: |
           dotnet test CESIZen.Tests/CESIZen.Tests.csproj \
@@ -157,7 +156,6 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-  # NOUVEAU: Job de résumé des tests
   test-summary:
     name: Test Summary
     runs-on: ubuntu-latest
